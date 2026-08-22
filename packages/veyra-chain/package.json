@@ -6,10 +6,13 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc -p tsconfig.json"
+    "build": "tsc -p tsconfig.json",
+    "test": "tsc -p tsconfig.json && node --test dist/test/positionReader.test.js",
+    "test:live": "tsc -p tsconfig.json && node --test dist/test/positionReader.live.test.js"
   },
   "dependencies": {
     "@bnbagent/sdk": "0.5.1",
+    "@veyra/core": "^0.1.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
