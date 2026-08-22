@@ -1,0 +1,120 @@
+{
+  "runArchiveId": 2,
+  "runId": "6b38075a-cf46-449b-9e22-e2a3cf1d1274",
+  "roundId": 6,
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "winnerCandidateId": "baseline-hold",
+  "winningProposal": {
+    "candidateId": "baseline-hold",
+    "displayLabel": "Baseline Strategy",
+    "agentIdOnChain": null,
+    "proposedAction": {
+      "kind": "hold"
+    },
+    "rationale": "Keeps the current range unchanged; no rebalance proposed."
+  },
+  "plan": {
+    "jobId": "agent-arena-loop-6b38075a-cf46-449b-9e22-e2a3cf1d1274",
+    "candidateId": "baseline-hold",
+    "positionTokenId": 37059,
+    "network": "bsc-testnet",
+    "currentRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "targetRange": null,
+    "liquidityToMigrate": "0",
+    "expectedAmounts": {
+      "amount0": "0",
+      "amount1": "0"
+    },
+    "steps": [],
+    "estimatedGasWei": "0",
+    "feasible": true,
+    "feasibilityReasons": [],
+    "status": "EXECUTION_NOT_SENT"
+  },
+  "simulation": {
+    "jobId": "agent-arena-loop-6b38075a-cf46-449b-9e22-e2a3cf1d1274",
+    "candidateId": "baseline-hold",
+    "positionTokenId": 37059,
+    "action": "HOLD",
+    "oldRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "targetRange": null,
+    "targetRangeValidity": {
+      "status": "NOT_APPLICABLE",
+      "detail": "hold proposes no new range"
+    },
+    "mintStructuralValidity": {
+      "status": "NOT_APPLICABLE",
+      "detail": "hold proposes no mint"
+    },
+    "ratioAdjustment": {
+      "status": "NOT_APPLICABLE",
+      "strandedAmount0": "0",
+      "strandedAmount1": "0",
+      "strandedFraction0": 0,
+      "strandedFraction1": 0,
+      "ratioFixRequired": false,
+      "detail": "hold proposes no re-mint, so no ratio to fix"
+    },
+    "slippageProtection": {
+      "status": "NOT_APPLICABLE",
+      "detail": "hold has nothing to protect against slippage"
+    },
+    "pureExecutable": true,
+    "pureExecutableReasons": [],
+    "status": "SIMULATED",
+    "decreaseLiquidityLive": {
+      "status": "NOT_ATTEMPTED",
+      "detail": "hold requires no transaction"
+    },
+    "collectLive": {
+      "status": "NOT_ATTEMPTED",
+      "detail": "hold requires no transaction"
+    },
+    "mintLive": {
+      "status": "NOT_ATTEMPTED",
+      "detail": "hold requires no transaction"
+    },
+    "liveGasEstimateWei": null,
+    "executable": true,
+    "executableReasons": []
+  },
+  "finalState": "HOLD",
+  "isFailure": false,
+  "transactions": [],
+  "generatedAt": "2026-08-22T15:38:31.947Z",
+  "transitions": [
+    {
+      "from": "OBSERVE",
+      "to": "EVALUATE",
+      "timestamp": "2026-08-22T15:38:31.936Z"
+    },
+    {
+      "from": "EVALUATE",
+      "to": "PLAN",
+      "timestamp": "2026-08-22T15:38:31.940Z"
+    },
+    {
+      "from": "PLAN",
+      "to": "SIMULATE",
+      "timestamp": "2026-08-22T15:38:31.941Z"
+    },
+    {
+      "from": "SIMULATE",
+      "to": "HOLD",
+      "timestamp": "2026-08-22T15:38:31.945Z"
+    },
+    {
+      "from": "HOLD",
+      "to": "ARCHIVED",
+      "timestamp": "2026-08-22T15:38:31.947Z"
+    }
+  ],
+  "artifactHash": "bb8e0338faa99dab0f8dc9858fa0f6917d618964f1b30f3f9eda65c082b1bb51"
+}

@@ -1,13 +1,13 @@
 {
-  "roundId": 6,
-  "artifactHash": "a604fd7897839db6ea22ccfd5ff030d772df69a2936e0259f14fb78d46bb8321",
+  "roundId": 5,
+  "artifactHash": "cb883c6e67baeaf23a022e50185c24b2b3667afadea788ea3eacff75d1b94269",
   "veyraAgentId": 1890,
   "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
   "positionTokenId": "37059",
-  "observedAtBlock": "126592633",
+  "observedAtBlock": "126591440",
   "observed": {
     "positionTokenId": "37059",
-    "blockNumber": "126592633",
+    "blockNumber": "126591440",
     "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
     "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
     "fee": 2500,
@@ -33,8 +33,8 @@
     "recentVolatilityBpsProvenance": "SUPPLIED_NOT_OBSERVED"
   },
   "job": {
-    "jobId": "agent-arena-loop-6b38075a-cf46-449b-9e22-e2a3cf1d1274",
-    "createdAt": "2026-08-22T15:38:31.937Z",
+    "jobId": "agent-arena-loop-a87751c2-3a9a-4b5c-b2b6-819425249111",
+    "createdAt": "2026-08-22T15:29:35.869Z",
     "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
     "category": "rebalance",
     "target": {
@@ -162,76 +162,5 @@
     }
   ],
   "winnerCandidateId": "baseline-hold",
-  "executionPlan": {
-    "jobId": "agent-arena-loop-6b38075a-cf46-449b-9e22-e2a3cf1d1274",
-    "candidateId": "baseline-hold",
-    "positionTokenId": 37059,
-    "network": "bsc-testnet",
-    "currentRange": {
-      "tickLower": -58050,
-      "tickUpper": -56050
-    },
-    "targetRange": null,
-    "liquidityToMigrate": "0",
-    "expectedAmounts": {
-      "amount0": "0",
-      "amount1": "0"
-    },
-    "steps": [],
-    "estimatedGasWei": "0",
-    "feasible": true,
-    "feasibilityReasons": [],
-    "status": "EXECUTION_NOT_SENT"
-  },
-  "simulation": {
-    "jobId": "agent-arena-loop-6b38075a-cf46-449b-9e22-e2a3cf1d1274",
-    "candidateId": "baseline-hold",
-    "positionTokenId": 37059,
-    "action": "HOLD",
-    "oldRange": {
-      "tickLower": -58050,
-      "tickUpper": -56050
-    },
-    "targetRange": null,
-    "targetRangeValidity": {
-      "status": "NOT_APPLICABLE",
-      "detail": "hold proposes no new range"
-    },
-    "mintStructuralValidity": {
-      "status": "NOT_APPLICABLE",
-      "detail": "hold proposes no mint"
-    },
-    "ratioAdjustment": {
-      "status": "NOT_APPLICABLE",
-      "strandedAmount0": "0",
-      "strandedAmount1": "0",
-      "strandedFraction0": 0,
-      "strandedFraction1": 0,
-      "ratioFixRequired": false,
-      "detail": "hold proposes no re-mint, so no ratio to fix"
-    },
-    "slippageProtection": {
-      "status": "NOT_APPLICABLE",
-      "detail": "hold has nothing to protect against slippage"
-    },
-    "pureExecutable": true,
-    "pureExecutableReasons": [],
-    "status": "SIMULATED",
-    "decreaseLiquidityLive": {
-      "status": "NOT_ATTEMPTED",
-      "detail": "hold requires no transaction"
-    },
-    "collectLive": {
-      "status": "NOT_ATTEMPTED",
-      "detail": "hold requires no transaction"
-    },
-    "mintLive": {
-      "status": "NOT_ATTEMPTED",
-      "detail": "hold requires no transaction"
-    },
-    "liveGasEstimateWei": null,
-    "executable": true,
-    "executableReasons": []
-  },
-  "generatedAt": "2026-08-22T15:38:31.942Z"
+  "generatedAt": "2026-08-22T15:29:35.871Z"
 }
