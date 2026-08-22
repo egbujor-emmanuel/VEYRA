@@ -21,6 +21,8 @@ import {
   createRun,
   transition,
   isFailure,
+  authorizeExecution,
+  DEFAULT_EXECUTION_POLICY,
   rangeKeeperStrategy,
   baselineHoldStrategy,
   baselineSymmetricRangeStrategy,
@@ -29,6 +31,7 @@ import {
   type CurrentPositionState,
   type RunRecord,
   type RunState,
+  type ExecutionPolicy,
 } from "@veyra/core";
 import { readPositionObservation, toMarketSnapshot } from "./positionReader.js";
 import { simulateLive } from "./simulate.js";
@@ -77,6 +80,7 @@ export interface RunAgentArenaLoopOpts {
   ownerWallet: Address;
   docsDir: string; // absolute path to the repo's docs/ directory
   chainId?: number; // default 97
+  policy?: ExecutionPolicy; // default DEFAULT_EXECUTION_POLICY
 }
 
 export interface AgentArenaLoopResult {
@@ -86,6 +90,13 @@ export interface AgentArenaLoopResult {
   winnerCandidateId: string;
   newPositionTokenId: string | null;
   outPath: string;
+}
+
+interface BlockTrace {
+  observationBlock: string;
+  planningBlock: string;
+  simulationBlock: string;
+  executionStartBlock: string | null; // null when execution was never authorized
 }
 
 export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<AgentArenaLoopResult> {
@@ -136,10 +147,12 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
     sqrtPriceX96: observation.sqrtPriceX96,
   };
   const plan = planExecution({ job, proposal: winner.proposal, currentPosition, recipient: opts.ownerWallet });
+  const planningBlock = await opts.client.getBlockNumber();
 
   // --- SIMULATE ---
   run = transition(run, "SIMULATE");
   const sim = await simulateLive({ client: opts.client, plan, currentSqrtPriceX96: observation.sqrtPriceX96, tickSpacing: snapshot.tickSpacing, account: opts.ownerWallet });
+  const simulationBlock = await opts.client.getBlockNumber();
 
   // Write the arena round record now that plan+simulation exist -- kept schema-compatible with
   // runLiveArenaEvaluation.ts's output (same executionPlan/simulation fields) so
@@ -163,13 +176,49 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
   writeFileSync(resolve(arenaRoundsDir, `round-${String(roundId).padStart(4, "0")}.json`), JSON.stringify(fullRoundRecord, null, 2));
   writeFileSync(resolve(opts.docsDir, "veyra-live-evaluation.json"), JSON.stringify(fullRoundRecord, null, 2));
 
+  const policy = opts.policy ?? DEFAULT_EXECUTION_POLICY;
+  let executionStartBlock: bigint | null = null;
+  let authorization: ReturnType<typeof authorizeExecution> | null = null;
+
   if (plan.targetRange === null) {
     // The real arena's winner was hold. Not a failure -- the honest, expected outcome when
-    // nothing scores better than doing nothing.
+    // nothing scores better than doing nothing. No policy check applies -- authorizeExecution
+    // itself always refuses a hold action trivially, so there is nothing to gate here.
     run = transition(run, "HOLD");
-  } else if (!sim.executable) {
-    run = transition(run, "EXECUTION_BLOCKED", sim.executableReasons.join("; ") || "simulation.executable is false");
   } else {
+    // The ONLY things this authorization check may ever look at: the winner's ACTION
+    // ("rebalance"), the simulation's verdict, verified on-chain ownership, gas-vs-cap, and
+    // observation freshness. It never sees which candidate proposed it -- see
+    // executionPolicy.ts's own structural test for why that's guaranteed, not just asserted.
+    const [ownerOfPosition, freshBlock] = await Promise.all([
+      opts.client.readContract({ address: NFPM_ADDRESS, abi: NFPM_ABI, functionName: "ownerOf", args: [opts.positionTokenId] }),
+      opts.client.getBlockNumber(),
+    ]);
+    executionStartBlock = freshBlock;
+    const ownershipVerified = ownerOfPosition.toLowerCase() === opts.ownerWallet.toLowerCase();
+
+    authorization = authorizeExecution({
+      policy,
+      winnerAction: "rebalance",
+      simulationExecutable: sim.executable,
+      ownershipVerified,
+      observationBlock: observation.blockNumber,
+      currentBlock: freshBlock,
+      estimatedGasWei: plan.estimatedGasWei,
+    });
+    const blockTrace: BlockTrace = {
+      observationBlock: observation.blockNumber.toString(),
+      planningBlock: planningBlock.toString(),
+      simulationBlock: simulationBlock.toString(),
+      executionStartBlock: executionStartBlock.toString(),
+    };
+    verificationDetail = { authorization, blockTrace };
+
+    if (!authorization.authorized) {
+      run = transition(run, "EXECUTION_BLOCKED", authorization.reasons.join("; "));
+      return archiveAndReturn();
+    }
+
     // --- Real execution path: DECREASE -> VERIFY -> COLLECT -> VERIFY -> MINT -> VERIFY ---
     const signer = createSigner(opts.client, opts.wallet, chainId);
     const [baselineBalance0, baselineBalance1] = await Promise.all([
@@ -266,7 +315,13 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
         newPositionObservation.positionLiquidity > 0n;
 
       newPositionTokenId = newTokenId.toString();
-      verificationDetail = { newPosition: { tokenId: newTokenId.toString(), ...(bigintsToStrings(newPositionObservation) as Record<string, unknown>) }, collectedAmount0: collectedAmount0.toString(), collectedAmount1: collectedAmount1.toString(), verified };
+      verificationDetail = {
+        ...verificationDetail,
+        newPosition: { tokenId: newTokenId.toString(), ...(bigintsToStrings(newPositionObservation) as Record<string, unknown>) },
+        collectedAmount0: collectedAmount0.toString(),
+        collectedAmount1: collectedAmount1.toString(),
+        verified,
+      };
 
       if (!verified) throw new Error("post-mint verification FAILED -- new position parameters do not match the plan");
       run = transition(run, "EXECUTED");
@@ -284,29 +339,34 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
   }
 
   // --- ARCHIVE: always, regardless of outcome ---
-  const finalState = run.currentState; // the meaningful outcome (HOLD / EXECUTED / *_FAILED / EXECUTION_BLOCKED), captured BEFORE the bookkeeping ARCHIVED transition below
-  const runArchiveId = nextRunArchiveId(runsDir);
-  const contentRecord = {
-    runArchiveId,
-    runId,
-    roundId,
-    veyraAgentId: VEYRA_AGENT_ID_ON_CHAIN,
-    ownerWallet: opts.ownerWallet,
-    winnerCandidateId: winner.proposal.candidateId,
-    winningProposal: winner.proposal,
-    plan: bigintsToStrings(plan),
-    simulation: bigintsToStrings(sim),
-    finalState,
-    isFailure: isFailure(finalState),
-    transactions: txRecords,
-    ...verificationDetail,
-    generatedAt: new Date().toISOString(),
-  };
-  run = transition(run, "ARCHIVED");
-  const record = { ...contentRecord, transitions: run.transitions };
-  const artifactHash = sha256(JSON.stringify(record));
-  const outPath = resolve(runsDir, `run-${String(runArchiveId).padStart(4, "0")}.json`);
-  writeFileSync(outPath, JSON.stringify({ ...record, artifactHash }, null, 2));
+  return archiveAndReturn();
 
-  return { run, roundId, runArchiveId, winnerCandidateId: winner.proposal.candidateId, newPositionTokenId, outPath };
+  function archiveAndReturn(): AgentArenaLoopResult {
+    const finalState = run.currentState; // the meaningful outcome (HOLD / EXECUTED / *_FAILED / EXECUTION_BLOCKED), captured BEFORE the bookkeeping ARCHIVED transition below
+    const runArchiveId = nextRunArchiveId(runsDir);
+    const contentRecord = {
+      runArchiveId,
+      runId,
+      roundId,
+      veyraAgentId: VEYRA_AGENT_ID_ON_CHAIN,
+      ownerWallet: opts.ownerWallet,
+      winnerCandidateId: winner.proposal.candidateId,
+      winningProposal: winner.proposal,
+      plan: bigintsToStrings(plan),
+      simulation: bigintsToStrings(sim),
+      policy: bigintsToStrings(policy),
+      finalState,
+      isFailure: isFailure(finalState),
+      transactions: txRecords,
+      ...verificationDetail,
+      generatedAt: new Date().toISOString(),
+    };
+    run = transition(run, "ARCHIVED");
+    const record = { ...contentRecord, transitions: run.transitions };
+    const artifactHash = sha256(JSON.stringify(record));
+    const outPath = resolve(runsDir, `run-${String(runArchiveId).padStart(4, "0")}.json`);
+    writeFileSync(outPath, JSON.stringify({ ...record, artifactHash }, null, 2));
+
+    return { run, roundId, runArchiveId, winnerCandidateId: winner.proposal.candidateId, newPositionTokenId, outPath };
+  }
 }
