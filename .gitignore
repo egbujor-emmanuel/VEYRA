@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.env
+.env.local
+*.log
+
+# throwaway CLI exploration scaffold (not part of the VEYRA product) -- keeps any wallet
+# keystore files out of git regardless of how sensitive they actually are
+/smoketest/
