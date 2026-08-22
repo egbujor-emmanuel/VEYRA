@@ -11,8 +11,8 @@
 // below) -- the evaluator then computes every candidate's metrics itself from that shared
 // snapshot. No strategy self-reports a score; see docs/AGENT_ARENA_ARCHITECTURE.md §2/§3.
 
-import { writeFileSync } from "node:fs";
-import { randomUUID } from "node:crypto";
+import { writeFileSync, mkdirSync, readdirSync } from "node:fs";
+import { randomUUID, createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { createPublicClient, http } from "viem";
@@ -29,7 +29,23 @@ import { readPositionObservation, toMarketSnapshot } from "../src/positionReader
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // __dirname at runtime is dist/scripts/ -- 4 levels up reaches the repo root.
-const RECORD_PATH = resolve(__dirname, "../../../../docs/veyra-live-evaluation.json");
+const DOCS_DIR = resolve(__dirname, "../../../../docs");
+const RECORD_PATH = resolve(DOCS_DIR, "veyra-live-evaluation.json");
+const ROUNDS_DIR = resolve(DOCS_DIR, "arena-rounds");
+
+/** Round numbers are append-only: scan the archive, never reuse or overwrite a past round. */
+function nextRoundId(): number {
+  mkdirSync(ROUNDS_DIR, { recursive: true });
+  const existing = readdirSync(ROUNDS_DIR)
+    .map((f) => /^round-(\d+)\.json$/.exec(f)?.[1])
+    .filter((n): n is string => n !== undefined)
+    .map(Number);
+  return existing.length === 0 ? 1 : Math.max(...existing) + 1;
+}
+
+function sha256(content: string): string {
+  return createHash("sha256").update(content).digest("hex");
+}
 
 // The position minted in the previous slice (docs/VEYRA_POSITION_VERIFICATION.md). Once a
 // real job-creation flow exists, this comes from the JobSpec's own target field instead of
@@ -142,7 +158,8 @@ async function main() {
   console.log(`Action: ${JSON.stringify(result.winner.proposal.proposedAction)}`);
   console.log(`\nNo execution performed -- this slice stops at read -> propose -> evaluate -> rank.`);
 
-  const record = {
+  const roundId = nextRoundId();
+  const recordContent = {
     veyraAgentId: VEYRA_AGENT_ID_ON_CHAIN,
     ownerWallet: VEYRA_WALLET,
     positionTokenId: VEYRA_POSITION_TOKEN_ID.toString(),
@@ -189,8 +206,20 @@ async function main() {
     generatedAt: new Date().toISOString(),
   };
 
-  writeFileSync(RECORD_PATH, JSON.stringify(record, null, 2));
-  console.log(`\nWrote docs/veyra-live-evaluation.json`);
+  // Hash the content BEFORE roundId/artifactHash are attached -- the hash identifies this
+  // round's actual observe/propose/evaluate/rank content, not the archival metadata wrapping it.
+  const artifactHash = sha256(JSON.stringify(recordContent));
+  const record = { roundId, artifactHash, ...recordContent };
+
+  const roundPath = resolve(ROUNDS_DIR, `round-${String(roundId).padStart(4, "0")}.json`);
+  const body = JSON.stringify(record, null, 2);
+  writeFileSync(roundPath, body); // permanent, append-only archive entry for this round
+  writeFileSync(RECORD_PATH, body); // "latest round" pointer the arena UI reads
+
+  section(`Round #${roundId}`);
+  console.log(`Archived: docs/arena-rounds/round-${String(roundId).padStart(4, "0")}.json`);
+  console.log(`Artifact hash (sha256 of round content): ${artifactHash}`);
+  console.log(`Updated docs/veyra-live-evaluation.json (latest-round pointer)`);
 }
 
 main().catch((err) => {

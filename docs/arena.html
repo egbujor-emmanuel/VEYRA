@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>VEYRA Arena — Round #1</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0b0e14; --panel: #12151f; --panel-2: #171b28; --border: #262b3a;
+    --text: #e6e8ee; --muted: #8b91a7; --accent: #4f8cff; --good: #2fbf71;
+    --warn: #e0a530; --bad: #e05a4f;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    padding: 32px 20px 80px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin: 0 0 24px; }
+  .lede { font-size: 1.05rem; line-height: 1.5; color: #cfd3e0; margin: 0 0 28px; padding: 16px 18px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 18px 20px; margin-bottom: 20px; }
+  .panel h2 { font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); margin: 0 0 14px; }
+  .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px 24px; font-size: 0.88rem; }
+  .kv div { display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px dashed var(--border); padding: 4px 0; }
+  .kv span.k { color: var(--muted); }
+  .kv span.v { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.82rem; word-break: break-all; text-align: right; }
+  .tag { display: inline-block; font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em; padding: 2px 6px; border-radius: 4px; margin-left: 6px; vertical-align: middle; }
+  .tag-observed { background: rgba(79,140,255,0.18); color: #8fb4ff; }
+  .tag-derived { background: rgba(155,109,255,0.18); color: #c4a9ff; }
+  .tag-supplied { background: rgba(224,165,48,0.18); color: var(--warn); }
+  .tag-simulated { background: rgba(139,145,167,0.18); color: var(--muted); }
+  .legend { display: flex; gap: 18px; flex-wrap: wrap; font-size: 0.8rem; color: var(--muted); }
+  .legend b { color: var(--text); }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .card { position: relative; background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .candidate-winner { border-color: var(--good); box-shadow: 0 0 0 1px var(--good), 0 0 24px rgba(47,191,113,0.15); }
+  .winner-ribbon { position: absolute; top: -1px; right: 16px; background: var(--good); color: #04150c; font-size: 0.65rem; font-weight: 800; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 0 0 6px 6px; }
+  .card-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .label-badge { font-size: 0.7rem; font-weight: 700; letter-spacing: 0.03em; padding: 3px 8px; border-radius: 20px; }
+  .candidate-agent .label-badge { background: rgba(79,140,255,0.2); color: #8fb4ff; }
+  .candidate-baseline .label-badge { background: rgba(139,145,167,0.2); color: var(--muted); }
+  .agent-id { font-size: 0.7rem; color: var(--muted); font-family: ui-monospace, monospace; }
+  .candidate-name { margin: 0 0 6px; font-size: 1rem; font-family: ui-monospace, monospace; }
+  .action { margin: 0 0 8px; font-size: 0.92rem; }
+  .rationale { margin: 0 0 14px; font-size: 0.82rem; color: var(--muted); line-height: 1.4; }
+  .score-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .score-bar-track { flex: 1; height: 8px; background: #23283a; border-radius: 4px; overflow: hidden; }
+  .score-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--good)); }
+  .score-value { font-family: ui-monospace, monospace; font-weight: 700; min-width: 46px; text-align: right; }
+  table.metrics { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+  table.metrics td { padding: 4px 2px; border-bottom: 1px solid var(--border); color: #cfd3e0; }
+  table.metrics td:first-child { color: var(--muted); }
+  .feas-yes { color: var(--good); }
+  .feas-no { color: var(--bad); }
+  .fine-print { font-size: 0.7rem; color: var(--muted); margin: 10px 0 0; line-height: 1.4; }
+  .winner-banner { display: flex; align-items: center; gap: 14px; padding: 16px 20px; }
+  .winner-banner .name { font-size: 1.15rem; font-weight: 700; }
+  .winner-banner .score { margin-left: auto; font-family: ui-monospace, monospace; font-size: 1.3rem; font-weight: 800; color: var(--good); }
+  .empty-state { color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
+  footer { color: var(--muted); font-size: 0.75rem; margin-top: 30px; }
+  code.hash { font-family: ui-monospace, monospace; word-break: break-all; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>VEYRA Arena — Round #1</h1>
+  <p class="subtitle">BSC Testnet · generated 2026-08-22T13:04:15.957Z</p>
+
+  <p class="lede">
+    VEYRA doesn't decide what to do and then justify it. It gives every strategy the same
+    live market state, evaluates every proposal with the same rules, and accepts whichever
+    proposal actually scores best — even when that means its own registered agent doesn't win.
+  </p>
+
+  <div class="panel">
+    <h2>Provenance legend</h2>
+    <div class="legend">
+      <span><span class="tag tag-observed">OBSERVED</span> <b>read directly from BSC testnet</b>, verbatim</span>
+      <span><span class="tag tag-derived">DERIVED</span> <b>calculated</b> from observed state by a deterministic formula</span>
+      <span><span class="tag tag-supplied">SUPPLIED</span> <b>explicitly provided input</b> — not read from chain</span>
+      <span><span class="tag tag-simulated">SIMULATED</span> <b>projected/estimated</b> outcome — none appear in this round</span>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>VEYRA Agent #1890 <span class="tag tag-observed">OBSERVED</span></h2>
+    <div class="kv">
+      <div><span class="k">Owner wallet</span><span class="v">0x9429BE71274b9E5fB56EE7C57C58298FFF720f11</span></div>
+      <div><span class="k">ERC-8004 registry</span><span class="v">BSC testnet</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Position #37058 — observed at block 126572064 <span class="tag tag-observed">OBSERVED</span></h2>
+    <div class="kv">
+      <div><span class="k">Pool</span><span class="v">0x61c17A2C050facFdf8651b576Bc898596f5223b9</span></div>
+      <div><span class="k">Fee tier</span><span class="v">2500</span></div>
+      <div><span class="k">token0</span><span class="v">0x00efbCce2ff935332fC66851CfD34A000F6c7B8d (18d)</span></div>
+      <div><span class="k">token1</span><span class="v">0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd (18d)</span></div>
+      <div><span class="k">Position range</span><span class="v">[-59050, -55050)</span></div>
+      <div><span class="k">Current tick</span><span class="v">-57041</span></div>
+      <div><span class="k">Position liquidity</span><span class="v">3624304981691222991</span></div>
+      <div><span class="k">Pool liquidity</span><span class="v">3624304981691222991</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Market Snapshot — the exact input handed to all three candidates</h2>
+    <div class="kv">
+      <div><span class="k">currentTick <span class="tag tag-observed">OBSERVED</span></span><span class="v">-57041</span></div>
+      <div><span class="k">currentRange <span class="tag tag-observed">OBSERVED</span></span><span class="v">[-59050, -55050)</span></div>
+      <div><span class="k">currentLiquidity <span class="tag tag-observed">OBSERVED</span></span><span class="v">3624304981691222991</span></div>
+      <div><span class="k">tickSpacing <span class="tag tag-derived">DERIVED</span></span><span class="v">50</span></div>
+      <div><span class="k">recentVolatilityBps <span class="tag tag-supplied">SUPPLIED</span></span><span class="v">0 — SUPPLIED_NOT_OBSERVED</span></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Round result</h2>
+    <div class="winner-banner">
+      <span class="label-badge" style="background:rgba(47,191,113,0.2);color:#7fe0a8;">🏆 Baseline Strategy</span>
+      <span class="name">baseline-hold</span>
+      <span class="score">75.00</span>
+    </div>
+  </div>
+
+  <div class="cards">
+    
+  <article class="card candidate-agent ">
+    
+    <header class="card-head">
+      <span class="label-badge">Our Agent</span>
+      <span class="agent-id">ERC-8004 #1890</span>
+    </header>
+    <h3 class="candidate-name">rangekeeper-v1</h3>
+    <p class="action">Rebalance to [-58050, -56050)</p>
+    <p class="rationale">Centered a 2000-tick-wide range on the current tick, widened for recent volatility of 0 bps (risk tolerance: medium).</p>
+
+    <div class="score-row">
+      <div class="score-bar-track"><div class="score-bar-fill" style="width:50%"></div></div>
+      <div class="score-value">50.00</div>
+    </div>
+
+    <table class="metrics">
+      <tbody>
+        <tr><td>fee efficiency</td><td>100.0</td><td>100 norm</td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+        <tr><td>risk score</td><td>100.0</td><td>0 norm</td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+        <tr><td>gas (wei)</td><td>3000000000000000</td><td>0 norm</td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+        <tr><td>feasibility</td><td colspan="2"><span class="feas feas-yes">feasible</span></td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+      </tbody>
+    </table>
+    <p class="fine-print">Fee efficiency is a tick-width heuristic — <strong>not amount-aware</strong> (no token-amount/decimal data reaches the evaluator yet). Not a historical backtest.</p>
+  </article>
+
+  <article class="card candidate-baseline candidate-winner">
+    <div class="winner-ribbon">WINNER</div>
+    <header class="card-head">
+      <span class="label-badge">Baseline Strategy</span>
+      
+    </header>
+    <h3 class="candidate-name">baseline-hold</h3>
+    <p class="action">Hold — no rebalance</p>
+    <p class="rationale">Keeps the current range unchanged; no rebalance proposed.</p>
+
+    <div class="score-row">
+      <div class="score-bar-track"><div class="score-bar-fill" style="width:75%"></div></div>
+      <div class="score-value">75.00</div>
+    </div>
+
+    <table class="metrics">
+      <tbody>
+        <tr><td>fee efficiency</td><td>50.0</td><td>0 norm</td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+        <tr><td>risk score</td><td>50.0</td><td>100 norm</td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+        <tr><td>gas (wei)</td><td>0</td><td>100 norm</td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+        <tr><td>feasibility</td><td colspan="2"><span class="feas feas-yes">feasible</span></td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+      </tbody>
+    </table>
+    <p class="fine-print">Fee efficiency is a tick-width heuristic — <strong>not amount-aware</strong> (no token-amount/decimal data reaches the evaluator yet). Not a historical backtest.</p>
+  </article>
+
+  <article class="card candidate-baseline ">
+    
+    <header class="card-head">
+      <span class="label-badge">Baseline Strategy</span>
+      
+    </header>
+    <h3 class="candidate-name">baseline-symmetric-range</h3>
+    <p class="action">Rebalance to [-58050, -56050)</p>
+    <p class="rationale">Fixed 40-tick-spacing-wide symmetric range around current price, no volatility adjustment.</p>
+
+    <div class="score-row">
+      <div class="score-bar-track"><div class="score-bar-fill" style="width:50%"></div></div>
+      <div class="score-value">50.00</div>
+    </div>
+
+    <table class="metrics">
+      <tbody>
+        <tr><td>fee efficiency</td><td>100.0</td><td>100 norm</td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+        <tr><td>risk score</td><td>100.0</td><td>0 norm</td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+        <tr><td>gas (wei)</td><td>3000000000000000</td><td>0 norm</td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+        <tr><td>feasibility</td><td colspan="2"><span class="feas feas-yes">feasible</span></td><td><span class="tag tag-derived">DERIVED</span></td></tr>
+      </tbody>
+    </table>
+    <p class="fine-print">Fee efficiency is a tick-width heuristic — <strong>not amount-aware</strong> (no token-amount/decimal data reaches the evaluator yet). Not a historical backtest.</p>
+  </article>
+  </div>
+
+  <div class="panel">
+    <h2>Verified Track Record</h2>
+    <p class="empty-state">
+      No track record exists yet for VEYRA Agent #1890. Jobs completed: <strong>0</strong>.
+      Reputation only accumulates from real, logged executions — none have run yet, so none are
+      shown. This section will not display a number until a real completed job produces one.
+    </p>
+  </div>
+
+  <footer>
+    No execution occurred this round — this is <code>observe → propose → evaluate → rank</code>,
+    not <code>observe → execute → rebalance</code>.<br />
+    Artifact hash (sha256 of round content): <code class="hash">5a733deaa779c957d5fd7228b5c4bf56f6fc5c60bb431529c2c07e907822d607</code><br />
+    Full machine-readable record: <code>docs/arena-rounds/round-0001.json</code>
+  </footer>
+
+</div>
+</body>
+</html>
