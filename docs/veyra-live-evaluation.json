@@ -1,0 +1,165 @@
+{
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "positionTokenId": "37058",
+  "observedAtBlock": "126570740",
+  "observed": {
+    "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "token0Decimals": 18,
+    "token1Decimals": 18,
+    "fee": 2500,
+    "tickLower": -59050,
+    "tickUpper": -55050,
+    "positionLiquidity": "3624304981691222991",
+    "poolLiquidity": "3624304981691222991",
+    "currentTick": -57041,
+    "sqrtPriceX96": "4574240095500993253416187062"
+  },
+  "marketSnapshot": {
+    "currentTick": -57041,
+    "currentRange": {
+      "tickLower": -59050,
+      "tickUpper": -55050
+    },
+    "currentLiquidity": "3624304981691222991",
+    "tickSpacing": 50,
+    "recentVolatilityBps": 0,
+    "recentVolatilityBpsProvenance": "SUPPLIED_NOT_OBSERVED"
+  },
+  "job": {
+    "jobId": "35e9528e-4007-4b4d-91be-3ebaccd7cde7",
+    "createdAt": "2026-08-22T12:54:24.227Z",
+    "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+    "category": "rebalance",
+    "target": {
+      "protocol": "pancakeswap-v3",
+      "network": "bsc-testnet",
+      "positionTokenId": 37058
+    },
+    "constraints": {
+      "maxSpendWei": "10000000000000000",
+      "maxSlippageBps": 100,
+      "riskTolerance": "medium",
+      "deadlineSeconds": 600
+    },
+    "budget": {
+      "currency": "U",
+      "amountWei": "100000000000000000"
+    },
+    "status": "evaluating",
+    "erc8183JobId": null
+  },
+  "proposals": [
+    {
+      "candidateId": "rangekeeper-v1",
+      "displayLabel": "Our Agent",
+      "agentIdOnChain": 1890,
+      "proposedAction": {
+        "kind": "rebalance",
+        "newRange": {
+          "tickLower": -58050,
+          "tickUpper": -56050
+        }
+      },
+      "rationale": "Centered a 2000-tick-wide range on the current tick, widened for recent volatility of 0 bps (risk tolerance: medium).",
+      "metrics": {
+        "estimatedGasWei": "3000000000000000",
+        "estimatedFeeEfficiency": 100,
+        "estimatedSlippageBps": 0,
+        "riskScore": 100,
+        "executionFeasible": true,
+        "provenanceNote": "DERIVED from deterministic formulas over OBSERVED chain state -- not a historical backtest, not a live gas estimate yet"
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 0,
+          "gas": 0,
+          "feasibility": 100
+        },
+        "totalScore": 50
+      },
+      "isWinner": false
+    },
+    {
+      "candidateId": "baseline-hold",
+      "displayLabel": "Baseline Strategy",
+      "agentIdOnChain": null,
+      "proposedAction": {
+        "kind": "hold"
+      },
+      "rationale": "Keeps the current range unchanged; no rebalance proposed.",
+      "metrics": {
+        "estimatedGasWei": "0",
+        "estimatedFeeEfficiency": 50,
+        "estimatedSlippageBps": 0,
+        "riskScore": 50,
+        "executionFeasible": true,
+        "provenanceNote": "DERIVED from deterministic formulas over OBSERVED chain state -- not a historical backtest, not a live gas estimate yet"
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 0,
+          "risk": 100,
+          "gas": 100,
+          "feasibility": 100
+        },
+        "totalScore": 75
+      },
+      "isWinner": true
+    },
+    {
+      "candidateId": "baseline-symmetric-range",
+      "displayLabel": "Baseline Strategy",
+      "agentIdOnChain": null,
+      "proposedAction": {
+        "kind": "rebalance",
+        "newRange": {
+          "tickLower": -58050,
+          "tickUpper": -56050
+        }
+      },
+      "rationale": "Fixed 40-tick-spacing-wide symmetric range around current price, no volatility adjustment.",
+      "metrics": {
+        "estimatedGasWei": "3000000000000000",
+        "estimatedFeeEfficiency": 100,
+        "estimatedSlippageBps": 0,
+        "riskScore": 100,
+        "executionFeasible": true,
+        "provenanceNote": "DERIVED from deterministic formulas over OBSERVED chain state -- not a historical backtest, not a live gas estimate yet"
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 0,
+          "gas": 0,
+          "feasibility": 100
+        },
+        "totalScore": 50
+      },
+      "isWinner": false
+    }
+  ],
+  "winnerCandidateId": "baseline-hold",
+  "generatedAt": "2026-08-22T12:54:24.232Z"
+}
