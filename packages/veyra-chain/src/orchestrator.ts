@@ -24,6 +24,10 @@ import {
   isFailure,
   authorizeExecution,
   DEFAULT_EXECUTION_POLICY,
+  computeRebalanceSwapRequirement,
+  getLiquidityForAmounts,
+  getAmountsForLiquidity,
+  RATIO_MISMATCH_THRESHOLD,
   rangeKeeperStrategy,
   baselineHoldStrategy,
   baselineSymmetricRangeStrategy,
@@ -36,11 +40,13 @@ import {
 } from "@veyra/core";
 import { readPositionObservation, toMarketSnapshot } from "./positionReader.js";
 import { simulateLive } from "./simulate.js";
+import { getLiveSwapQuote } from "./rebalanceQuote.js";
 import { createSigner, type SigningWallet, type TxRecord } from "./txSigner.js";
-import { NFPM_ABI, ERC20_ABI } from "./abis.js";
+import { NFPM_ABI, ERC20_ABI, POOL_ABI, SWAP_ROUTER_ABI } from "./abis.js";
 import { PANCAKE_V3_TESTNET } from "./testnetAddresses.js";
 
 const NFPM_ADDRESS = PANCAKE_V3_TESTNET.nonfungiblePositionManager as Address;
+const SWAP_ROUTER = PANCAKE_V3_TESTNET.swapRouter as Address;
 
 function bigintsToStrings(value: unknown): unknown {
   if (typeof value === "bigint") return value.toString();
@@ -271,19 +277,95 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
       // absolute balance. See accounting.ts.
       const { collectedAmount0, collectedAmount1 } = computeCollectedAmounts({ baselineBalance0, baselineBalance1, postCollectBalance0, postCollectBalance1 });
 
-      if (collectedAmount0 > 0n) {
-        const approveData = encodeFunctionData({ abi: ERC20_ABI, functionName: "approve", args: [NFPM_ADDRESS, collectedAmount0] });
+      // --- DETERMINE BALANCE DELTA -> SWAP EXCESS TOKEN (only if the ACTUAL collected amounts,
+      // not the pre-execution estimate, still need it) ---
+      // Recomputed fresh against the REAL collected amounts -- plan.expectedAmounts was a
+      // pre-decrease estimate; fee accrual/rounding means the real amounts can differ slightly,
+      // and it's the real amounts that must actually fund the mint.
+      const freshSlot0 = await opts.client.readContract({ address: observation.poolAddress, abi: POOL_ABI, functionName: "slot0" });
+      const swapRequirement = computeRebalanceSwapRequirement(collectedAmount0, collectedAmount1, plan.targetRange.tickLower, plan.targetRange.tickUpper, freshSlot0[0]);
+
+      // mintAmount0/1 always end up as a DELTA against baselineBalance0/1 (the SAME pre-
+      // decrease baseline the collectedAmount0/1 hard invariant already uses) -- never an
+      // absolute balance read, and never a second, incompatible use of computeCollectedAmounts
+      // (which asserts BOTH deltas are non-negative; a swap makes exactly one of them negative
+      // by design, so it must not be reused here).
+      let mintAmount0 = collectedAmount0;
+      let mintAmount1 = collectedAmount1;
+      let swapDetail: Record<string, unknown> = { swapRequirement: bigintsToStrings(swapRequirement) };
+
+      if (swapRequirement.direction !== "NO_SWAP_REQUIRED") {
+        run = transition(run, "SWAP_PENDING");
+        const [tokenIn, tokenOut] = swapRequirement.direction === "SWAP_TOKEN0_FOR_TOKEN1" ? [observation.token0, observation.token1] : [observation.token1, observation.token0];
+
+        const freshQuote = await getLiveSwapQuote({ client: opts.client, tokenIn, tokenOut, fee: observation.fee, amountIn: swapRequirement.amountIn });
+        const maxSlippageBps = job.constraints.maxSlippageBps;
+        const amountOutMinimum = (freshQuote.amountOut * BigInt(10_000 - maxSlippageBps)) / 10_000n;
+
+        // Approve EXACTLY the swap input -- never the full collected balance.
+        const approveSwapData = encodeFunctionData({ abi: ERC20_ABI, functionName: "approve", args: [SWAP_ROUTER, swapRequirement.amountIn] });
+        txRecords.push(await signer.sendAndWait(`approve-swaprouter-${swapRequirement.direction === "SWAP_TOKEN0_FOR_TOKEN1" ? "token0" : "token1"}`, tokenIn, approveSwapData));
+
+        const swapDeadline = BigInt(Math.floor(Date.now() / 1000) + job.constraints.deadlineSeconds);
+        const swapData = encodeFunctionData({
+          abi: SWAP_ROUTER_ABI,
+          functionName: "exactInputSingle",
+          args: [{ tokenIn, tokenOut, fee: observation.fee, recipient: opts.ownerWallet, deadline: swapDeadline, amountIn: swapRequirement.amountIn, amountOutMinimum, sqrtPriceLimitX96: 0n }],
+        });
+
+        // Any throw here (including a reverted swap tx) propagates to the single outer
+        // catch below, which maps the run's CURRENT state (still SWAP_PENDING) to SWAP_FAILED
+        // and transitions exactly once -- see failureFor there. Do not transition here too.
+        txRecords.push(await signer.sendAndWait("ratio-fix-swap", SWAP_ROUTER, swapData));
+
+        const [postSwapBalance0, postSwapBalance1] = await Promise.all([
+          opts.client.readContract({ address: observation.token0, abi: ERC20_ABI, functionName: "balanceOf", args: [opts.ownerWallet] }),
+          opts.client.readContract({ address: observation.token1, abi: ERC20_ABI, functionName: "balanceOf", args: [opts.ownerWallet] }),
+        ]);
+        // Both against the ORIGINAL pre-decrease baseline -- this correctly isolates "how much
+        // of token0/token1 belongs to this whole operation right now," through decrease,
+        // collect, AND the swap, in one delta each. A swap legitimately moves one side down and
+        // the other up, so neither delta is asserted non-negative here (unlike collectedAmount0/1).
+        mintAmount0 = postSwapBalance0 - baselineBalance0;
+        mintAmount1 = postSwapBalance1 - baselineBalance1;
+
+        // Refuse to mint if the ACTUAL resulting ratio (not the projection) is still outside tolerance.
+        const achievableLiquidity = getLiquidityForAmounts(freshSlot0[0], plan.targetRange.tickLower, plan.targetRange.tickUpper, mintAmount0, mintAmount1);
+        const consumed = getAmountsForLiquidity(freshSlot0[0], plan.targetRange.tickLower, plan.targetRange.tickUpper, achievableLiquidity);
+        const strandedFraction0 = mintAmount0 === 0n ? 0 : Number(mintAmount0 - consumed.amount0) / Number(mintAmount0);
+        const strandedFraction1 = mintAmount1 === 0n ? 0 : Number(mintAmount1 - consumed.amount1) / Number(mintAmount1);
+        if (strandedFraction0 > RATIO_MISMATCH_THRESHOLD || strandedFraction1 > RATIO_MISMATCH_THRESHOLD) {
+          // Propagates to the single outer catch, same as above -- not transitioned here.
+          throw new Error(
+            `post-swap ratio still outside tolerance: stranded fractions ${strandedFraction0.toFixed(4)}/${strandedFraction1.toFixed(4)} exceed ${RATIO_MISMATCH_THRESHOLD} -- refusing to mint`,
+          );
+        }
+
+        swapDetail = {
+          swapRequirement: bigintsToStrings(swapRequirement),
+          freshQuote: bigintsToStrings(freshQuote),
+          amountOutMinimum: amountOutMinimum.toString(),
+          mintAmount0: mintAmount0.toString(),
+          mintAmount1: mintAmount1.toString(),
+          postSwapStrandedFraction0: strandedFraction0,
+          postSwapStrandedFraction1: strandedFraction1,
+        };
+      }
+      verificationDetail = { ...verificationDetail, swap: swapDetail };
+
+      if (mintAmount0 > 0n) {
+        const approveData = encodeFunctionData({ abi: ERC20_ABI, functionName: "approve", args: [NFPM_ADDRESS, mintAmount0] });
         txRecords.push(await signer.sendAndWait("approve-token0", observation.token0, approveData));
       }
-      if (collectedAmount1 > 0n) {
-        const approveData = encodeFunctionData({ abi: ERC20_ABI, functionName: "approve", args: [NFPM_ADDRESS, collectedAmount1] });
+      if (mintAmount1 > 0n) {
+        const approveData = encodeFunctionData({ abi: ERC20_ABI, functionName: "approve", args: [NFPM_ADDRESS, mintAmount1] });
         txRecords.push(await signer.sendAndWait("approve-token1", observation.token1, approveData));
       }
 
       run = transition(run, "MINT_PENDING");
       const maxSlippageBps = job.constraints.maxSlippageBps;
-      const amount0Min = (collectedAmount0 * BigInt(10_000 - maxSlippageBps)) / 10_000n;
-      const amount1Min = (collectedAmount1 * BigInt(10_000 - maxSlippageBps)) / 10_000n;
+      const amount0Min = (mintAmount0 * BigInt(10_000 - maxSlippageBps)) / 10_000n;
+      const amount1Min = (mintAmount1 * BigInt(10_000 - maxSlippageBps)) / 10_000n;
       const deadline = Math.floor(Date.now() / 1000) + job.constraints.deadlineSeconds;
       const mintArgs = {
         token0: observation.token0,
@@ -291,8 +373,8 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
         fee: observation.fee,
         tickLower: plan.targetRange.tickLower,
         tickUpper: plan.targetRange.tickUpper,
-        amount0Desired: collectedAmount0,
-        amount1Desired: collectedAmount1,
+        amount0Desired: mintAmount0,
+        amount1Desired: mintAmount1,
         amount0Min,
         amount1Min,
         recipient: opts.ownerWallet,
@@ -345,6 +427,7 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
       const failureFor: Record<string, RunState> = {
         DECREASE_PENDING: "DECREASE_FAILED",
         COLLECT_PENDING: "COLLECT_FAILED",
+        SWAP_PENDING: "SWAP_FAILED",
         MINT_PENDING: "MINT_FAILED",
         VERIFYING: "VERIFICATION_FAILED",
       };

@@ -15,6 +15,8 @@ export type RunState =
   | "DECREASE_FAILED" // terminal
   | "COLLECT_PENDING"
   | "COLLECT_FAILED" // terminal
+  | "SWAP_PENDING" // only entered when the ratio-fixing swap is actually needed -- COLLECT_PENDING may go straight to MINT_PENDING otherwise
+  | "SWAP_FAILED" // terminal
   | "MINT_PENDING"
   | "MINT_FAILED" // terminal
   | "VERIFYING"
@@ -27,6 +29,7 @@ export const TERMINAL_STATES: ReadonlySet<RunState> = new Set([
   "EXECUTION_BLOCKED",
   "DECREASE_FAILED",
   "COLLECT_FAILED",
+  "SWAP_FAILED",
   "MINT_FAILED",
   "VERIFICATION_FAILED",
   "EXECUTED",
@@ -37,6 +40,7 @@ export const FAILURE_STATES: ReadonlySet<RunState> = new Set([
   "EXECUTION_BLOCKED",
   "DECREASE_FAILED",
   "COLLECT_FAILED",
+  "SWAP_FAILED",
   "MINT_FAILED",
   "VERIFICATION_FAILED",
 ]);
@@ -51,8 +55,10 @@ export const VALID_TRANSITIONS: Record<RunState, readonly RunState[]> = {
   EXECUTION_BLOCKED: ["ARCHIVED"],
   DECREASE_PENDING: ["DECREASE_FAILED", "COLLECT_PENDING"],
   DECREASE_FAILED: ["ARCHIVED"],
-  COLLECT_PENDING: ["COLLECT_FAILED", "MINT_PENDING"],
+  COLLECT_PENDING: ["COLLECT_FAILED", "SWAP_PENDING", "MINT_PENDING"],
   COLLECT_FAILED: ["ARCHIVED"],
+  SWAP_PENDING: ["SWAP_FAILED", "MINT_PENDING"],
+  SWAP_FAILED: ["ARCHIVED"],
   MINT_PENDING: ["MINT_FAILED", "VERIFYING"],
   MINT_FAILED: ["ARCHIVED"],
   VERIFYING: ["VERIFICATION_FAILED", "EXECUTED"],

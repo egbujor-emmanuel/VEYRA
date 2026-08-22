@@ -7,6 +7,7 @@ export * from "./execution.js";
 export * from "./simulation.js";
 export * from "./runStateMachine.js";
 export * from "./executionPolicy.js";
+export * from "./rebalanceSwap.js";
 export * from "./strategies/rangeKeeper.js";
 export * from "./strategies/baselineHold.js";
 export * from "./strategies/baselineSymmetricRange.js";

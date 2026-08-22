@@ -5,9 +5,10 @@
 // requiring a private key or a signature.
 
 import type { PublicClient, Address } from "viem";
-import { simulatePlan, type ExecutionPlan, type PureSimulationResult } from "@veyra/core";
+import { simulatePlan, computeRebalanceSwapRequirement, getLiquidityForAmounts, getAmountsForLiquidity, RATIO_MISMATCH_THRESHOLD, type ExecutionPlan, type PureSimulationResult, type RebalanceSwapRequirement } from "@veyra/core";
 import { NFPM_ABI } from "./abis.js";
 import { PANCAKE_V3_TESTNET } from "./testnetAddresses.js";
+import { getLiveSwapQuote } from "./rebalanceQuote.js";
 
 export type LiveCheckStatus = "VALID" | "INVALID" | "NOT_ATTEMPTED";
 
@@ -17,13 +18,29 @@ export interface LiveStepCheck {
   gasEstimateWei?: bigint;
 }
 
+export interface RatioFixLiveCheck {
+  status: LiveCheckStatus; // NOT_ATTEMPTED when no fix was needed at all; VALID only when a REAL quote projects clearing the threshold
+  detail: string;
+  swapRequirement?: RebalanceSwapRequirement; // the pure, pre-quote estimate
+  realQuoteAmountOut?: bigint;
+  realQuoteGasEstimateWei?: bigint;
+  projectedAmount0AfterRealSwap?: bigint;
+  projectedAmount1AfterRealSwap?: bigint;
+  projectedStrandedFraction0AfterRealSwap?: number;
+  projectedStrandedFraction1AfterRealSwap?: number;
+}
+
 export interface LiveSimulationResult extends PureSimulationResult {
   decreaseLiquidityLive: LiveStepCheck;
   collectLive: LiveStepCheck;
+  ratioFixLive: RatioFixLiveCheck;
   mintLive: LiveStepCheck; // always NOT_ATTEMPTED this slice -- see the detail string for why
   liveGasEstimateWei: bigint | null; // decrease+collect only; null unless BOTH succeeded live
-  // Final verdict: the pure layer's executable ANDed with the live layer's. A pure check can
-  // never be overridden back to true by a live success -- only further restricted.
+  // Final verdict: the pure layer's NON-ratio checks ANDed with the live layer's (decrease,
+  // collect, AND the ratio-fix's real quote). A pure check can never be overridden back to true
+  // by a live success -- except the ratio-fix specifically, which is the ONE thing the live
+  // layer is authoritative over (the pure layer only knows "not implemented," never "a swap
+  // would fix this," since it has no quote to check that claim against).
   executable: boolean;
   executableReasons: string[];
 }
@@ -64,6 +81,7 @@ export async function simulateLive(opts: SimulateLiveOpts): Promise<LiveSimulati
       ...pure,
       decreaseLiquidityLive: notApplicable(),
       collectLive: notApplicable(),
+      ratioFixLive: { status: "NOT_ATTEMPTED", detail: "hold requires no transaction" },
       mintLive: notApplicable(),
       liveGasEstimateWei: null,
       executable: pure.pureExecutable,
@@ -129,7 +147,89 @@ export async function simulateLive(opts: SimulateLiveOpts): Promise<LiveSimulati
       "mint's gas/validity depends on token balances and an NFPM approval that only exist after decreaseLiquidity + collect actually execute -- not simulatable against current pre-decrease wallet state without a state-override eth_call (not attempted this slice).",
   };
 
-  const executableReasons = [...pure.pureExecutableReasons];
+  // The ratio-fix check is the ONE place a live result may lift a pure-layer block: the pure
+  // simulatePlan() only knows "no swap is implemented," never "a real swap would fix this" --
+  // it has no quote to check that claim against. This block gets a REAL QuoterV2 quote and
+  // recomputes the SAME stranded-fraction math simulatePlan() uses, against the REAL quoted
+  // output -- never against the pure, fee-free estimate.
+  let ratioFixLive: RatioFixLiveCheck;
+  if (!pure.ratioAdjustment.ratioFixRequired) {
+    ratioFixLive = { status: "NOT_ATTEMPTED", detail: "no ratio-fixing swap is needed for this plan" };
+  } else {
+    const mintStep = opts.plan.steps.find((s) => s.kind === "mint");
+    if (!mintStep || mintStep.kind !== "mint") {
+      throw new Error("a rebalance ExecutionPlan with a ratio mismatch must contain a mint step");
+    }
+    const swapRequirement = computeRebalanceSwapRequirement(
+      opts.plan.expectedAmounts.amount0,
+      opts.plan.expectedAmounts.amount1,
+      opts.plan.targetRange.tickLower,
+      opts.plan.targetRange.tickUpper,
+      opts.currentSqrtPriceX96,
+    );
+    if (swapRequirement.direction === "NO_SWAP_REQUIRED") {
+      ratioFixLive = {
+        status: "INVALID",
+        detail: "pure ratio check says a fix is required but the swap calculator found none needed -- inconsistent, refusing rather than guessing",
+        swapRequirement,
+      };
+    } else {
+      const [tokenIn, tokenOut] =
+        swapRequirement.direction === "SWAP_TOKEN0_FOR_TOKEN1" ? [mintStep.token0, mintStep.token1] : [mintStep.token1, mintStep.token0];
+      try {
+        const quote = await getLiveSwapQuote({ client: opts.client, tokenIn: tokenIn as Address, tokenOut: tokenOut as Address, fee: mintStep.fee, amountIn: swapRequirement.amountIn });
+
+        const projected0 =
+          swapRequirement.direction === "SWAP_TOKEN0_FOR_TOKEN1"
+            ? opts.plan.expectedAmounts.amount0 - swapRequirement.amountIn
+            : opts.plan.expectedAmounts.amount0 + quote.amountOut;
+        const projected1 =
+          swapRequirement.direction === "SWAP_TOKEN0_FOR_TOKEN1"
+            ? opts.plan.expectedAmounts.amount1 + quote.amountOut
+            : opts.plan.expectedAmounts.amount1 - swapRequirement.amountIn;
+
+        const achievableLiquidity = getLiquidityForAmounts(opts.currentSqrtPriceX96, opts.plan.targetRange.tickLower, opts.plan.targetRange.tickUpper, projected0, projected1);
+        const consumed = getAmountsForLiquidity(opts.currentSqrtPriceX96, opts.plan.targetRange.tickLower, opts.plan.targetRange.tickUpper, achievableLiquidity);
+        const fraction0 = projected0 === 0n ? 0 : Number(projected0 - consumed.amount0) / Number(projected0);
+        const fraction1 = projected1 === 0n ? 0 : Number(projected1 - consumed.amount1) / Number(projected1);
+        const clears = fraction0 <= RATIO_MISMATCH_THRESHOLD && fraction1 <= RATIO_MISMATCH_THRESHOLD;
+
+        ratioFixLive = {
+          status: clears ? "VALID" : "INVALID",
+          detail: clears
+            ? `real quote (${quote.amountOut} out for ${swapRequirement.amountIn} in) projects clearing the ratio-mismatch threshold`
+            : `even with a real quote, the projected post-swap ratio still strands ~${(fraction0 * 100).toFixed(1)}%/${(fraction1 * 100).toFixed(1)}% (token0/token1) -- refusing rather than minting anyway`,
+          swapRequirement,
+          realQuoteAmountOut: quote.amountOut,
+          realQuoteGasEstimateWei: quote.gasEstimate,
+          projectedAmount0AfterRealSwap: projected0,
+          projectedAmount1AfterRealSwap: projected1,
+          projectedStrandedFraction0AfterRealSwap: fraction0,
+          projectedStrandedFraction1AfterRealSwap: fraction1,
+        };
+      } catch (err) {
+        ratioFixLive = {
+          status: "INVALID",
+          detail: `live QuoterV2 quote failed: ${err instanceof Error ? err.message.slice(0, 300) : String(err)}`,
+          swapRequirement,
+        };
+      }
+    }
+  }
+
+  // Reconstruct the pure layer's NON-ratio blockers directly from its structured fields (never
+  // by string-matching pureExecutableReasons) -- the ratio-fix verdict above is what supersedes
+  // simulatePlan()'s own, always-true "not implemented" statement about that ONE specific check.
+  const nonRatioPureBlockers: string[] = [];
+  if (pure.targetRangeValidity.status === "INVALID") nonRatioPureBlockers.push(`target range invalid: ${pure.targetRangeValidity.detail}`);
+  if (pure.mintStructuralValidity.status === "INVALID") nonRatioPureBlockers.push(`mint structurally invalid: ${pure.mintStructuralValidity.detail}`);
+  if (pure.slippageProtection.status === "INVALID") nonRatioPureBlockers.push(`slippage protection missing: ${pure.slippageProtection.detail}`);
+  if (!opts.plan.feasible) nonRatioPureBlockers.push(...opts.plan.feasibilityReasons);
+
+  const ratioOk = ratioFixLive.status !== "INVALID";
+
+  const executableReasons = [...nonRatioPureBlockers];
+  if (!ratioOk) executableReasons.push(`ratio-fixing swap check failed: ${ratioFixLive.detail}`);
   if (decreaseLiquidityLive.status === "INVALID") {
     executableReasons.push(`live decreaseLiquidity simulation failed: ${decreaseLiquidityLive.detail}`);
   }
@@ -146,9 +246,10 @@ export async function simulateLive(opts: SimulateLiveOpts): Promise<LiveSimulati
     ...pure,
     decreaseLiquidityLive,
     collectLive,
+    ratioFixLive,
     mintLive,
     liveGasEstimateWei,
-    executable: pure.pureExecutable && decreaseLiquidityLive.status !== "INVALID" && collectLive.status !== "INVALID",
+    executable: nonRatioPureBlockers.length === 0 && ratioOk && decreaseLiquidityLive.status !== "INVALID" && collectLive.status !== "INVALID",
     executableReasons,
   };
 }

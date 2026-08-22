@@ -188,6 +188,39 @@ export const SWAP_ROUTER_ABI = [
   },
 ] as const;
 
+// Standard Uniswap V3 periphery QuoterV2.quoteExactInputSingle. Not a `view` function on-chain
+// (it reverts internally to return data) but is call-simulatable via eth_call regardless --
+// viem's simulateContract does exactly that, no signer, no transaction. Used ONLY to get a
+// REAL expected output for the ratio-fixing swap before sizing amountOutMinimum -- never
+// amountOutMinimum=0 for an actual VEYRA execution (Test B's swap was a deliberately separate,
+// narrowly-scoped exception, not the pattern for this).
+export const QUOTER_V2_ABI = [
+  {
+    type: "function",
+    name: "quoteExactInputSingle",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "tokenIn", type: "address" },
+          { name: "tokenOut", type: "address" },
+          { name: "amountIn", type: "uint256" },
+          { name: "fee", type: "uint24" },
+          { name: "sqrtPriceLimitX96", type: "uint160" },
+        ],
+      },
+    ],
+    outputs: [
+      { name: "amountOut", type: "uint256" },
+      { name: "sqrtPriceX96After", type: "uint160" },
+      { name: "initializedTicksCrossed", type: "uint32" },
+      { name: "gasEstimate", type: "uint256" },
+    ],
+  },
+] as const;
+
 export const FACTORY_ABI = [
   {
     type: "function",
