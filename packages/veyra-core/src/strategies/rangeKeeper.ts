@@ -6,7 +6,10 @@ import { roundToTickSpacing } from "../tickMath.js";
 // but the tick math below is what actually produces `proposedAction`.
 const BASE_HALF_WIDTH_SPACINGS = 20; // half-width in units of tickSpacing at zero observed volatility
 
-export const AGENT_ID_ON_CHAIN_PLACEHOLDER = null; // set to the real registered agentId once §5 registration lands
+// Registered on BSC testnet 2026-08-22 via packages/veyra-chain/scripts/registerVeyraAgent.ts.
+// tx 0x121ddee38632fdd2dfba550d7735c8432d06ae9225dbf53c34fa3016f63d2aaf, owner-verified via
+// an independent ownerOf(1890) read against the registry (0x8004A818...4BD9e).
+export const VEYRA_AGENT_ID_ON_CHAIN = 1890;
 
 export const rangeKeeperStrategy: StrategyFn = async (
   job: JobSpec,
@@ -21,7 +24,7 @@ export const rangeKeeperStrategy: StrategyFn = async (
   return {
     candidateId: "rangekeeper-v1",
     displayLabel: "Our Agent",
-    agentIdOnChain: AGENT_ID_ON_CHAIN_PLACEHOLDER,
+    agentIdOnChain: VEYRA_AGENT_ID_ON_CHAIN,
     proposedAction: { kind: "rebalance", newRange: { tickLower, tickUpper } },
     rationale:
       `Centered a ${(halfWidthTicks * 2).toFixed(0)}-tick-wide range on the current tick, ` +

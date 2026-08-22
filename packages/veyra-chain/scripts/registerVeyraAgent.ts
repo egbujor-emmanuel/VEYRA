@@ -12,6 +12,12 @@ import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
 import { ensureTestnetRpcOverride } from "../src/network.js";
 
+// The project's real, public, currently-live repo -- honest in that it's a real
+// dereferenceable "web" resource describing the project, though not itself a
+// live agent API. Update via `agent.setAgentUri()` once a real A2A/MCP
+// endpoint is deployed (the SDK's two-phase design supports this directly).
+const WEB_ENDPOINT_URL = "https://github.com/egbujor-emmanuel/VEYRA";
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // __dirname at runtime is dist/scripts/ (compiled), so this needs 4 levels up
 // to reach the bnb-smart-money-era repo root: dist/scripts -> dist -> veyra-chain -> packages -> root.
@@ -37,7 +43,7 @@ async function main() {
   // Imported after the RPC override is set -- resolveNetwork() reads the env
   // var lazily per-call, but importing first then calling later is also safe;
   // this ordering just keeps the intent obvious at the call site.
-  const { EVMWalletProvider, ERC8004Agent } = await import("@bnbagent/sdk");
+  const { EVMWalletProvider, ERC8004Agent, AgentEndpoint } = await import("@bnbagent/sdk");
 
   const password = readWalletPassword();
   const walletProvider = new EVMWalletProvider({
@@ -73,9 +79,9 @@ async function main() {
       "VEYRA's ERC-8004-registered strategy agent (internal codename RangeKeeper) for PancakeSwap V3 " +
       "concentrated-liquidity rebalancing on BSC testnet. Competes against clearly labeled baseline " +
       "strategies under a shared, transparent evaluator -- see architecture doc for the full loop. " +
-      "Hackathon-build agent; no public HTTP endpoint deployed yet (endpoints will be added via " +
-      "setAgentUri once one exists, rather than registering a placeholder URL now).",
-    endpoints: [],
+      "Hackathon-build agent; no live agent API endpoint deployed yet -- the endpoint below is the " +
+      "project's public source repository, not a running agent server.",
+    endpoints: [new AgentEndpoint({ name: "web", endpoint: WEB_ENDPOINT_URL })],
     supportedTrust: ["reputation"],
   });
 

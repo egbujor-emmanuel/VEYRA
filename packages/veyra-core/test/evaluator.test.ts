@@ -5,6 +5,7 @@ import {
   rangeKeeperStrategy,
   baselineHoldStrategy,
   baselineSymmetricRangeStrategy,
+  VEYRA_AGENT_ID_ON_CHAIN,
   type JobSpec,
   type MarketSnapshot,
 } from "../src/index.js";
@@ -54,7 +55,7 @@ test("all three candidates produce proposals with correct labels", async () => {
   const proposals = await runAllStrategies(job, snapshot);
 
   assert.equal(proposals[0].displayLabel, "Our Agent");
-  assert.equal(proposals[0].agentIdOnChain, null); // not yet registered on-chain -- see rangeKeeper.ts placeholder
+  assert.equal(proposals[0].agentIdOnChain, VEYRA_AGENT_ID_ON_CHAIN); // registered on-chain -- see rangeKeeper.ts
   assert.equal(proposals[1].displayLabel, "Baseline Strategy");
   assert.equal(proposals[1].agentIdOnChain, null);
   assert.equal(proposals[2].displayLabel, "Baseline Strategy");
