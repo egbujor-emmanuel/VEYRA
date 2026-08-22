@@ -20,7 +20,9 @@ import type {
 export const PLACEHOLDER_REBALANCE_GAS_WEI = 3_000_000_000_000_000n; // ~0.003 BNB-equivalent, round number
 const REFERENCE_WIDTH_MULTIPLIER = 40; // "wide/safe" reference range, in units of tickSpacing
 
-function actionRange(
+// Exported (purely additive -- v1's own behavior/callers are unchanged) so evaluatorV2.ts can
+// reuse these without duplicating tick-width math or the risk-tolerance weight rule.
+export function actionRange(
   proposal: StrategyProposal,
   snapshot: MarketSnapshot,
 ): { tickLower: number; tickUpper: number } {
@@ -33,7 +35,7 @@ function actionRange(
 // narrower ranges concentrate liquidity (more fees while price stays in range) AND carry more
 // risk of exiting the range. This is the standard concentrated-liquidity width/risk tradeoff --
 // not two independently invented models. See architecture doc section 3.
-function widthDrivenMetric(widthTicks: number, tickSpacing: number): number {
+export function widthDrivenMetric(widthTicks: number, tickSpacing: number): number {
   const referenceWidthTicks = REFERENCE_WIDTH_MULTIPLIER * tickSpacing;
   const ratio = referenceWidthTicks / widthTicks;
   return Math.max(0, Math.min(100, 100 * ratio));
@@ -62,7 +64,7 @@ export function computeMetrics(
   return { estimatedGasWei, estimatedFeeEfficiency, estimatedSlippageBps, riskScore, executionFeasible };
 }
 
-function normalize(values: number[], higherIsBetter: boolean): number[] {
+export function normalize(values: number[], higherIsBetter: boolean): number[] {
   const min = Math.min(...values);
   const max = Math.max(...values);
   if (max === min) return values.map(() => 100); // no candidate is worse than another on this axis
@@ -72,7 +74,7 @@ function normalize(values: number[], higherIsBetter: boolean): number[] {
   });
 }
 
-function weightsFor(job: JobSpec): ScoreBreakdown["weights"] {
+export function weightsFor(job: JobSpec): ScoreBreakdown["weights"] {
   // The one documented, non-invented weight rule (architecture doc section 3): low risk
   // tolerance shifts weight toward risk avoidance. No other per-job customization exists.
   if (job.constraints.riskTolerance === "low") {

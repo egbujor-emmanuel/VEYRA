@@ -2,6 +2,7 @@ export * from "./types.js";
 export * from "./accounting.js";
 export * from "./tickMath.js";
 export * from "./evaluator.js";
+export * from "./evaluatorV2.js";
 export * from "./execution.js";
 export * from "./simulation.js";
 export * from "./runStateMachine.js";

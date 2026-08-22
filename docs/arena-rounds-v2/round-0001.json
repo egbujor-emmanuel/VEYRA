@@ -1,0 +1,245 @@
+{
+  "roundId": 1,
+  "evaluatorPolicy": "v2-market-aware",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "positionTokenId": "37059",
+  "observedAtBlock": "126599531",
+  "observed": {
+    "positionTokenId": "37059",
+    "blockNumber": "126599531",
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "fee": 2500,
+    "tickLower": -58050,
+    "tickUpper": -56050,
+    "positionLiquidity": "7039210414078688290",
+    "token0Decimals": 18,
+    "token1Decimals": 18,
+    "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "sqrtPriceX96": "4574240095500993253416187062",
+    "currentTick": -57041,
+    "poolLiquidity": "7039210414078688290"
+  },
+  "marketSnapshot": {
+    "currentTick": -57041,
+    "currentRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "currentLiquidity": "7039210414078688290",
+    "tickSpacing": 50,
+    "recentVolatilityBps": 0,
+    "recentVolatilityBpsProvenance": "SUPPLIED_NOT_OBSERVED"
+  },
+  "job": {
+    "jobId": "v2-readonly-9d8f768c-fefe-4029-9eeb-2120a2eb12a5",
+    "createdAt": "2026-08-22T16:30:16.282Z",
+    "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+    "category": "rebalance",
+    "target": {
+      "protocol": "pancakeswap-v3",
+      "network": "bsc-testnet",
+      "positionTokenId": 37059
+    },
+    "constraints": {
+      "maxSpendWei": "10000000000000000",
+      "maxSlippageBps": 100,
+      "riskTolerance": "medium",
+      "deadlineSeconds": 600
+    },
+    "budget": {
+      "currency": "U",
+      "amountWei": "100000000000000000"
+    },
+    "status": "evaluating",
+    "erc8183JobId": null
+  },
+  "proposals": [
+    {
+      "candidateId": "rangekeeper-v1",
+      "displayLabel": "Our Agent",
+      "agentIdOnChain": 1890,
+      "proposedAction": {
+        "kind": "rebalance",
+        "newRange": {
+          "tickLower": -58050,
+          "tickUpper": -56050
+        }
+      },
+      "rationale": "Centered a 2000-tick-wide range on the current tick, widened for recent volatility of 0 bps (risk tolerance: medium).",
+      "metrics": {
+        "estimatedGasWei": "3000000000000000",
+        "estimatedFeeEfficiency": 99.55,
+        "estimatedSlippageBps": 0,
+        "riskScore": 50.45,
+        "executionFeasible": true,
+        "widthEfficiency": 100,
+        "positioningScore": 99.1
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 0,
+          "feasibility": 100
+        },
+        "totalScore": 75
+      },
+      "isWinner": false
+    },
+    {
+      "candidateId": "baseline-hold",
+      "displayLabel": "Baseline Strategy",
+      "agentIdOnChain": null,
+      "proposedAction": {
+        "kind": "hold"
+      },
+      "rationale": "Keeps the current range unchanged; no rebalance proposed.",
+      "metrics": {
+        "estimatedGasWei": "0",
+        "estimatedFeeEfficiency": 99.55,
+        "estimatedSlippageBps": 0,
+        "riskScore": 50.45,
+        "executionFeasible": true,
+        "widthEfficiency": 100,
+        "positioningScore": 99.1
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 100,
+          "feasibility": 100
+        },
+        "totalScore": 100
+      },
+      "isWinner": true
+    },
+    {
+      "candidateId": "baseline-symmetric-range",
+      "displayLabel": "Baseline Strategy",
+      "agentIdOnChain": null,
+      "proposedAction": {
+        "kind": "rebalance",
+        "newRange": {
+          "tickLower": -58050,
+          "tickUpper": -56050
+        }
+      },
+      "rationale": "Fixed 40-tick-spacing-wide symmetric range around current price, no volatility adjustment.",
+      "metrics": {
+        "estimatedGasWei": "3000000000000000",
+        "estimatedFeeEfficiency": 99.55,
+        "estimatedSlippageBps": 0,
+        "riskScore": 50.45,
+        "executionFeasible": true,
+        "widthEfficiency": 100,
+        "positioningScore": 99.1
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 0,
+          "feasibility": 100
+        },
+        "totalScore": 75
+      },
+      "isWinner": false
+    }
+  ],
+  "winnerCandidateId": "baseline-hold",
+  "executionPlan": {
+    "jobId": "v2-readonly-9d8f768c-fefe-4029-9eeb-2120a2eb12a5",
+    "candidateId": "baseline-hold",
+    "positionTokenId": 37059,
+    "network": "bsc-testnet",
+    "currentRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "targetRange": null,
+    "liquidityToMigrate": "0",
+    "expectedAmounts": {
+      "amount0": "0",
+      "amount1": "0"
+    },
+    "steps": [],
+    "estimatedGasWei": "0",
+    "feasible": true,
+    "feasibilityReasons": [],
+    "status": "EXECUTION_NOT_SENT"
+  },
+  "simulation": {
+    "jobId": "v2-readonly-9d8f768c-fefe-4029-9eeb-2120a2eb12a5",
+    "candidateId": "baseline-hold",
+    "positionTokenId": 37059,
+    "action": "HOLD",
+    "oldRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "targetRange": null,
+    "targetRangeValidity": {
+      "status": "NOT_APPLICABLE",
+      "detail": "hold proposes no new range"
+    },
+    "mintStructuralValidity": {
+      "status": "NOT_APPLICABLE",
+      "detail": "hold proposes no mint"
+    },
+    "ratioAdjustment": {
+      "status": "NOT_APPLICABLE",
+      "strandedAmount0": "0",
+      "strandedAmount1": "0",
+      "strandedFraction0": 0,
+      "strandedFraction1": 0,
+      "ratioFixRequired": false,
+      "detail": "hold proposes no re-mint, so no ratio to fix"
+    },
+    "slippageProtection": {
+      "status": "NOT_APPLICABLE",
+      "detail": "hold has nothing to protect against slippage"
+    },
+    "pureExecutable": true,
+    "pureExecutableReasons": [],
+    "status": "SIMULATED",
+    "decreaseLiquidityLive": {
+      "status": "NOT_ATTEMPTED",
+      "detail": "hold requires no transaction"
+    },
+    "collectLive": {
+      "status": "NOT_ATTEMPTED",
+      "detail": "hold requires no transaction"
+    },
+    "mintLive": {
+      "status": "NOT_ATTEMPTED",
+      "detail": "hold requires no transaction"
+    },
+    "liveGasEstimateWei": null,
+    "executable": true,
+    "executableReasons": []
+  },
+  "note": "READ-ONLY verification round -- no transaction was sent or even attempted by this script.",
+  "generatedAt": "2026-08-22T16:30:16.290Z",
+  "artifactHash": "1ec66fa8de37b500ebf77a0851215d253d9ce9cc570524cb6f3f26745756ff11"
+}
