@@ -159,6 +159,35 @@ export const POOL_ABI = [
   { type: "function", name: "liquidity", stateMutability: "view", inputs: [], outputs: [{ type: "uint128" }] },
 ] as const;
 
+// Standard Uniswap V3 periphery ISwapRouter.exactInputSingle -- PancakeSwap V3's SwapRouter is
+// a direct fork (RECON_REPORT.md §8) and exposes the identical interface. Used ONLY by Test B's
+// deliberate, clearly-labeled controlled market transition (never by the arena/execution loop
+// itself, which never swaps).
+export const SWAP_ROUTER_ABI = [
+  {
+    type: "function",
+    name: "exactInputSingle",
+    stateMutability: "payable",
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "tokenIn", type: "address" },
+          { name: "tokenOut", type: "address" },
+          { name: "fee", type: "uint24" },
+          { name: "recipient", type: "address" },
+          { name: "deadline", type: "uint256" },
+          { name: "amountIn", type: "uint256" },
+          { name: "amountOutMinimum", type: "uint256" },
+          { name: "sqrtPriceLimitX96", type: "uint160" },
+        ],
+      },
+    ],
+    outputs: [{ name: "amountOut", type: "uint256" }],
+  },
+] as const;
+
 export const FACTORY_ABI = [
   {
     type: "function",

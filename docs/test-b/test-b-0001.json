@@ -1,0 +1,379 @@
+{
+  "testBId": 1,
+  "label": "TESTNET_CONTROLLED_MARKET_TRANSITION",
+  "provenance": {
+    "baseline": "OBSERVED",
+    "swapTransaction": "TESTNET_CONTROLLED",
+    "postTransitionObservation": "OBSERVED",
+    "positioningAndScores": "DERIVED",
+    "recentVolatilityBps": "SUPPLIED_NOT_OBSERVED",
+    "planAndSimulation": "SIMULATED"
+  },
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "positionTokenId": "37059",
+  "baseline": {
+    "observedAtBlock": "126627168",
+    "observed": {
+      "positionTokenId": "37059",
+      "blockNumber": "126627168",
+      "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+      "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+      "fee": 2500,
+      "tickLower": -58050,
+      "tickUpper": -56050,
+      "positionLiquidity": "7039210414078688290",
+      "token0Decimals": 18,
+      "token1Decimals": 18,
+      "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+      "sqrtPriceX96": "4574240095500993253416187062",
+      "currentTick": -57041,
+      "poolLiquidity": "7039210414078688290"
+    },
+    "winnerCandidateId": "baseline-hold",
+    "scored": [
+      {
+        "candidateId": "rangekeeper-v1",
+        "displayLabel": "Our Agent",
+        "metrics": {
+          "estimatedGasWei": "3000000000000000",
+          "estimatedFeeEfficiency": 99.55,
+          "estimatedSlippageBps": 0,
+          "riskScore": 50.45,
+          "executionFeasible": true,
+          "widthEfficiency": 100,
+          "positioningScore": 99.1
+        },
+        "score": {
+          "weights": {
+            "feeEfficiency": 0.25,
+            "risk": 0.25,
+            "gas": 0.25,
+            "feasibility": 0.25
+          },
+          "normalized": {
+            "feeEfficiency": 100,
+            "risk": 100,
+            "gas": 0,
+            "feasibility": 100
+          },
+          "totalScore": 75
+        },
+        "isWinner": false
+      },
+      {
+        "candidateId": "baseline-hold",
+        "displayLabel": "Baseline Strategy",
+        "metrics": {
+          "estimatedGasWei": "0",
+          "estimatedFeeEfficiency": 99.55,
+          "estimatedSlippageBps": 0,
+          "riskScore": 50.45,
+          "executionFeasible": true,
+          "widthEfficiency": 100,
+          "positioningScore": 99.1
+        },
+        "score": {
+          "weights": {
+            "feeEfficiency": 0.25,
+            "risk": 0.25,
+            "gas": 0.25,
+            "feasibility": 0.25
+          },
+          "normalized": {
+            "feeEfficiency": 100,
+            "risk": 100,
+            "gas": 100,
+            "feasibility": 100
+          },
+          "totalScore": 100
+        },
+        "isWinner": true
+      },
+      {
+        "candidateId": "baseline-symmetric-range",
+        "displayLabel": "Baseline Strategy",
+        "metrics": {
+          "estimatedGasWei": "3000000000000000",
+          "estimatedFeeEfficiency": 99.55,
+          "estimatedSlippageBps": 0,
+          "riskScore": 50.45,
+          "executionFeasible": true,
+          "widthEfficiency": 100,
+          "positioningScore": 99.1
+        },
+        "score": {
+          "weights": {
+            "feeEfficiency": 0.25,
+            "risk": 0.25,
+            "gas": 0.25,
+            "feasibility": 0.25
+          },
+          "normalized": {
+            "feeEfficiency": 100,
+            "risk": 100,
+            "gas": 0,
+            "feasibility": 100
+          },
+          "totalScore": 75
+        },
+        "isWinner": false
+      }
+    ]
+  },
+  "controlledSwap": {
+    "targetTick": -58150,
+    "sqrtPriceLimitX96": "4327444522482208127659911293",
+    "zeroForOne": true,
+    "amountInCeiling": "20859874221897320082",
+    "approveTx": {
+      "step": "approve-swaprouter-token0",
+      "hash": "0xb3c7ac74548f3e4f7acec8e16343fc6d2c4f5b115717da4a4dd24ea1c35e51ac",
+      "gasUsed": "46187",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "126627192"
+    },
+    "swapTx": {
+      "step": "controlled-swap-exactInputSingle",
+      "hash": "0xc06875a26c9afda591ea29b09ddf4560ff51b3f9ed577dd613651e093a7baabf",
+      "gasUsed": "210714",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "126627202"
+    }
+  },
+  "postTransition": {
+    "observedAtBlock": "126627205",
+    "observed": {
+      "positionTokenId": "37059",
+      "blockNumber": "126627205",
+      "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+      "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+      "fee": 2500,
+      "tickLower": -58050,
+      "tickUpper": -56050,
+      "positionLiquidity": "7039210414078688290",
+      "token0Decimals": 18,
+      "token1Decimals": 18,
+      "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+      "sqrtPriceX96": "4327444522482208127659911293",
+      "currentTick": -58150,
+      "poolLiquidity": "0"
+    },
+    "nowOutOfRange": true,
+    "winnerCandidateId": "rangekeeper-v1",
+    "scored": [
+      {
+        "candidateId": "rangekeeper-v1",
+        "displayLabel": "Our Agent",
+        "metrics": {
+          "estimatedGasWei": "3000000000000000",
+          "estimatedFeeEfficiency": 100,
+          "estimatedSlippageBps": 0,
+          "riskScore": 50,
+          "executionFeasible": true,
+          "widthEfficiency": 100,
+          "positioningScore": 100
+        },
+        "score": {
+          "weights": {
+            "feeEfficiency": 0.25,
+            "risk": 0.25,
+            "gas": 0.25,
+            "feasibility": 0.25
+          },
+          "normalized": {
+            "feeEfficiency": 100,
+            "risk": 100,
+            "gas": 0,
+            "feasibility": 100
+          },
+          "totalScore": 75
+        },
+        "isWinner": true
+      },
+      {
+        "candidateId": "baseline-hold",
+        "displayLabel": "Baseline Strategy",
+        "metrics": {
+          "estimatedGasWei": "0",
+          "estimatedFeeEfficiency": 50,
+          "estimatedSlippageBps": 0,
+          "riskScore": 100,
+          "executionFeasible": true,
+          "widthEfficiency": 100,
+          "positioningScore": 0
+        },
+        "score": {
+          "weights": {
+            "feeEfficiency": 0.25,
+            "risk": 0.25,
+            "gas": 0.25,
+            "feasibility": 0.25
+          },
+          "normalized": {
+            "feeEfficiency": 0,
+            "risk": 0,
+            "gas": 100,
+            "feasibility": 100
+          },
+          "totalScore": 50
+        },
+        "isWinner": false
+      },
+      {
+        "candidateId": "baseline-symmetric-range",
+        "displayLabel": "Baseline Strategy",
+        "metrics": {
+          "estimatedGasWei": "3000000000000000",
+          "estimatedFeeEfficiency": 100,
+          "estimatedSlippageBps": 0,
+          "riskScore": 50,
+          "executionFeasible": true,
+          "widthEfficiency": 100,
+          "positioningScore": 100
+        },
+        "score": {
+          "weights": {
+            "feeEfficiency": 0.25,
+            "risk": 0.25,
+            "gas": 0.25,
+            "feasibility": 0.25
+          },
+          "normalized": {
+            "feeEfficiency": 100,
+            "risk": 100,
+            "gas": 0,
+            "feasibility": 100
+          },
+          "totalScore": 75
+        },
+        "isWinner": false
+      }
+    ],
+    "executionPlan": {
+      "jobId": "test-b-f4cdf654-c5fe-4025-a47a-589a97967184",
+      "candidateId": "rangekeeper-v1",
+      "positionTokenId": 37059,
+      "network": "bsc-testnet",
+      "currentRange": {
+        "tickLower": -58050,
+        "tickUpper": -56050
+      },
+      "targetRange": {
+        "tickLower": -59150,
+        "tickUpper": -57150
+      },
+      "liquidityToMigrate": "7039210414078688290",
+      "expectedAmounts": {
+        "amount0": "12202427296506771186",
+        "amount1": "0"
+      },
+      "steps": [
+        {
+          "kind": "decreaseLiquidity",
+          "description": "Remove all 7039210414078688290 liquidity from position #37059 (range [-58050, -56050))",
+          "tokenId": 37059,
+          "liquidity": "7039210414078688290",
+          "amount0Min": "12080403023541703474",
+          "amount1Min": "0",
+          "deadline": 1787430454,
+          "estimatedGasWei": "1000000000000000"
+        },
+        {
+          "kind": "collect",
+          "description": "Collect all owed token0/token1 (principal + fees) from position #37059 to 0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+          "tokenId": 37059,
+          "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+          "amount0Max": "340282366920938463463374607431768211455",
+          "amount1Max": "340282366920938463463374607431768211455",
+          "estimatedGasWei": "1000000000000000"
+        },
+        {
+          "kind": "mint",
+          "description": "Mint a new position on [-59150, -57150) using the collected amounts",
+          "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+          "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+          "fee": 2500,
+          "tickLower": -59150,
+          "tickUpper": -57150,
+          "amount0Desired": "12202427296506771186",
+          "amount1Desired": "0",
+          "amount0Min": "12080403023541703474",
+          "amount1Min": "0",
+          "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+          "deadline": 1787430454,
+          "estimatedGasWei": "1000000000000000"
+        }
+      ],
+      "estimatedGasWei": "3000000000000000",
+      "feasible": true,
+      "feasibilityReasons": [],
+      "status": "EXECUTION_NOT_SENT"
+    },
+    "simulation": {
+      "jobId": "test-b-f4cdf654-c5fe-4025-a47a-589a97967184",
+      "candidateId": "rangekeeper-v1",
+      "positionTokenId": 37059,
+      "action": "REBALANCE",
+      "oldRange": {
+        "tickLower": -58050,
+        "tickUpper": -56050
+      },
+      "targetRange": {
+        "tickLower": -59150,
+        "tickUpper": -57150
+      },
+      "targetRangeValidity": {
+        "status": "VALID",
+        "detail": "[-59150, -57150) is a valid, tick-spacing-aligned range"
+      },
+      "mintStructuralValidity": {
+        "status": "VALID",
+        "detail": "token ordering and non-zero amounts confirmed"
+      },
+      "ratioAdjustment": {
+        "status": "NOT_IMPLEMENTED",
+        "strandedAmount0": "12202427296506771186",
+        "strandedAmount1": "0",
+        "strandedFraction0": 1,
+        "strandedFraction1": 0,
+        "ratioFixRequired": true,
+        "detail": "without a ratio-fixing swap, ~100.0% of token0 and ~0.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-59150, -57150) needs at the current price"
+      },
+      "slippageProtection": {
+        "status": "VALID",
+        "detail": "amount0Min/amount1Min are nonzero wherever a nonzero amount is expected"
+      },
+      "pureExecutable": false,
+      "pureExecutableReasons": [
+        "ratio-fixing swap required but not implemented: without a ratio-fixing swap, ~100.0% of token0 and ~0.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-59150, -57150) needs at the current price"
+      ],
+      "status": "SIMULATED",
+      "decreaseLiquidityLive": {
+        "status": "VALID",
+        "detail": "live eth_estimateGas succeeded against current BSC testnet chain state",
+        "gasEstimateWei": "21542900000000"
+      },
+      "collectLive": {
+        "status": "VALID",
+        "detail": "live eth_estimateGas succeeded against current BSC testnet chain state",
+        "gasEstimateWei": "17529100000000"
+      },
+      "mintLive": {
+        "status": "NOT_ATTEMPTED",
+        "detail": "mint's gas/validity depends on token balances and an NFPM approval that only exist after decreaseLiquidity + collect actually execute -- not simulatable against current pre-decrease wallet state without a state-override eth_call (not attempted this slice)."
+      },
+      "liveGasEstimateWei": "39072000000000",
+      "executable": false,
+      "executableReasons": [
+        "ratio-fixing swap required but not implemented: without a ratio-fixing swap, ~100.0% of token0 and ~0.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-59150, -57150) needs at the current price"
+      ]
+    }
+  },
+  "rangeKeeperWonNaturally": true,
+  "conclusion": "Same code, same strategies, same evaluator, real chain state: Hold won before the transition, RangeKeeper won after it. No candidate-identity branching was added anywhere to produce this.",
+  "generatedAt": "2026-08-22T20:17:35.389Z",
+  "artifactHash": "0248814e26601a89bbf1b9640729667f67403e6d99b989beb1f368a1ccca6b94"
+}

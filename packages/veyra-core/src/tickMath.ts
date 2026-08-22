@@ -142,3 +142,34 @@ export function getLiquidityForAmounts(
   }
   return liquidityForAmount1(sqrtRatioLowerX96, sqrtRatioUpperX96, amount1, Q96);
 }
+
+export interface SwapAmountEstimate {
+  zeroForOne: boolean; // true = swap token0 in (price decreases); false = swap token1 in (price increases)
+  amountIn: bigint;
+}
+
+/**
+ * Estimate the input amount needed to move a pool's price from sqrtPriceX96Current to
+ * sqrtPriceX96Target, ASSUMING constant liquidity across that whole span (i.e. no other
+ * initialized tick is crossed) and IGNORING the pool's swap fee. This is a planning estimate
+ * for a deliberate, controlled test swap -- not a claim about the exact amount a real swap will
+ * consume. Real swaps need somewhat more input than this to also cover the fee; callers driving
+ * an actual transaction should size amountIn generously and rely on the transaction's own
+ * `sqrtPriceLimitX96` (not this estimate) to bound how far the price actually moves.
+ */
+export function estimateSwapAmountForPriceMove(
+  sqrtPriceX96Current: bigint,
+  sqrtPriceX96Target: bigint,
+  liquidity: bigint,
+): SwapAmountEstimate {
+  const Q96 = 1n << 96n;
+  if (sqrtPriceX96Target < sqrtPriceX96Current) {
+    // Price decreasing: swap token0 in. Same math as amount0ForLiquidity over [target, current].
+    return { zeroForOne: true, amountIn: amount0ForLiquidity(sqrtPriceX96Target, sqrtPriceX96Current, liquidity, Q96) };
+  }
+  if (sqrtPriceX96Target > sqrtPriceX96Current) {
+    // Price increasing: swap token1 in. Same math as amount1ForLiquidity over [current, target].
+    return { zeroForOne: false, amountIn: amount1ForLiquidity(sqrtPriceX96Current, sqrtPriceX96Target, liquidity, Q96) };
+  }
+  return { zeroForOne: true, amountIn: 0n };
+}

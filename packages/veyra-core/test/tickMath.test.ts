@@ -1,6 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { getSqrtRatioAtTick, getAmountsForLiquidity, getLiquidityForAmounts } from "../src/index.js";
+import { getSqrtRatioAtTick, getAmountsForLiquidity, getLiquidityForAmounts, estimateSwapAmountForPriceMove } from "../src/index.js";
+
+const Q96 = 1n << 96n;
+
+// Independent, directly-derived closed-form inverses of the constant-liquidity swap formula --
+// NOT calls into estimateSwapAmountForPriceMove -- used to cross-check it rather than trust it
+// circularly. Derived from amount0 = L*Q96*(Pa-Pb)/(Pa*Pb) and amount1 = L*(Pb-Pa)/Q96.
+function nextSqrtPriceFromAmount0In(sqrtPa: bigint, liquidity: bigint, amount0: bigint): bigint {
+  return (liquidity * Q96 * sqrtPa) / (amount0 * sqrtPa + liquidity * Q96);
+}
+function nextSqrtPriceFromAmount1In(sqrtPa: bigint, liquidity: bigint, amount1: bigint): bigint {
+  return sqrtPa + (amount1 * Q96) / liquidity;
+}
 
 test("getSqrtRatioAtTick(0) is exactly 2^96 (price ratio 1:1, the known reference point)", () => {
   assert.equal(getSqrtRatioAtTick(0), 1n << 96n);
@@ -82,4 +94,40 @@ test("getLiquidityForAmounts returns the SMALLER of what each token alone suppor
 
   assert.ok(consumed1 <= scarceAmount1, "must not consume more of the scarce token than is actually available");
   assert.ok(achievable > 0n && achievable < 10_000_000n, "achievable liquidity should be small, bottlenecked by the scarce token1");
+});
+
+test("estimateSwapAmountForPriceMove: price decreasing swaps token0 in, and the amount reproduces the target price via an independently-derived inverse formula", () => {
+  const liquidity = 7_039_210_414_078_688_290n; // Position #37059's real liquidity
+  const sqrtPCurrent = getSqrtRatioAtTick(-57041);
+  const sqrtPTarget = getSqrtRatioAtTick(-58050); // toward the LOWER edge -- price must decrease
+
+  const estimate = estimateSwapAmountForPriceMove(sqrtPCurrent, sqrtPTarget, liquidity);
+  assert.equal(estimate.zeroForOne, true);
+  assert.ok(estimate.amountIn > 0n);
+
+  const reproducedPrice = nextSqrtPriceFromAmount0In(sqrtPCurrent, liquidity, estimate.amountIn);
+  const diff = reproducedPrice > sqrtPTarget ? reproducedPrice - sqrtPTarget : sqrtPTarget - reproducedPrice;
+  const relativeError = Number(diff) / Number(sqrtPTarget);
+  assert.ok(relativeError < 1e-9, `reproduced price drifted from target: relativeError=${relativeError}`);
+});
+
+test("estimateSwapAmountForPriceMove: price increasing swaps token1 in, and the amount reproduces the target price via an independently-derived inverse formula", () => {
+  const liquidity = 7_039_210_414_078_688_290n;
+  const sqrtPCurrent = getSqrtRatioAtTick(-57041);
+  const sqrtPTarget = getSqrtRatioAtTick(-55950); // past the UPPER edge -- price must increase
+
+  const estimate = estimateSwapAmountForPriceMove(sqrtPCurrent, sqrtPTarget, liquidity);
+  assert.equal(estimate.zeroForOne, false);
+  assert.ok(estimate.amountIn > 0n);
+
+  const reproducedPrice = nextSqrtPriceFromAmount1In(sqrtPCurrent, liquidity, estimate.amountIn);
+  const diff = reproducedPrice > sqrtPTarget ? reproducedPrice - sqrtPTarget : sqrtPTarget - reproducedPrice;
+  const relativeError = Number(diff) / Number(sqrtPTarget);
+  assert.ok(relativeError < 1e-9, `reproduced price drifted from target: relativeError=${relativeError}`);
+});
+
+test("estimateSwapAmountForPriceMove returns zero input when target price equals current price", () => {
+  const sqrtP = getSqrtRatioAtTick(-57041);
+  const estimate = estimateSwapAmountForPriceMove(sqrtP, sqrtP, 7_039_210_414_078_688_290n);
+  assert.equal(estimate.amountIn, 0n);
 });

@@ -1,0 +1,292 @@
+{
+  "roundId": 4,
+  "artifactHash": "c3dd271119017c81af2cf07ae539737eca2988d26cf94b47030221e0b2ab9990",
+  "evaluatorPolicy": "v2-market-aware",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "positionTokenId": "37059",
+  "observedAtBlock": "126627681",
+  "observed": {
+    "positionTokenId": "37059",
+    "blockNumber": "126627681",
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "fee": 2500,
+    "tickLower": -58050,
+    "tickUpper": -56050,
+    "positionLiquidity": "7039210414078688290",
+    "token0Decimals": 18,
+    "token1Decimals": 18,
+    "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "sqrtPriceX96": "4327444522482208127659911293",
+    "currentTick": -58150,
+    "poolLiquidity": "0"
+  },
+  "marketSnapshot": {
+    "currentTick": -58150,
+    "currentRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "currentLiquidity": "7039210414078688290",
+    "tickSpacing": 50,
+    "recentVolatilityBps": 0,
+    "recentVolatilityBpsProvenance": "SUPPLIED_NOT_OBSERVED"
+  },
+  "job": {
+    "jobId": "agent-arena-loop-79bf0884-1d87-49e4-9b9a-2c60e750e693",
+    "createdAt": "2026-08-22T20:21:09.789Z",
+    "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+    "category": "rebalance",
+    "target": {
+      "protocol": "pancakeswap-v3",
+      "network": "bsc-testnet",
+      "positionTokenId": 37059
+    },
+    "constraints": {
+      "maxSpendWei": "10000000000000000",
+      "maxSlippageBps": 100,
+      "riskTolerance": "medium",
+      "deadlineSeconds": 600
+    },
+    "budget": {
+      "currency": "U",
+      "amountWei": "100000000000000000"
+    },
+    "status": "evaluating",
+    "erc8183JobId": null
+  },
+  "proposals": [
+    {
+      "candidateId": "rangekeeper-v1",
+      "displayLabel": "Our Agent",
+      "agentIdOnChain": 1890,
+      "proposedAction": {
+        "kind": "rebalance",
+        "newRange": {
+          "tickLower": -59150,
+          "tickUpper": -57150
+        }
+      },
+      "rationale": "Centered a 2000-tick-wide range on the current tick, widened for recent volatility of 0 bps (risk tolerance: medium).",
+      "metrics": {
+        "estimatedGasWei": "3000000000000000",
+        "estimatedFeeEfficiency": 100,
+        "estimatedSlippageBps": 0,
+        "riskScore": 50,
+        "executionFeasible": true,
+        "widthEfficiency": 100,
+        "positioningScore": 100
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 0,
+          "feasibility": 100
+        },
+        "totalScore": 75
+      },
+      "isWinner": true
+    },
+    {
+      "candidateId": "baseline-hold",
+      "displayLabel": "Baseline Strategy",
+      "agentIdOnChain": null,
+      "proposedAction": {
+        "kind": "hold"
+      },
+      "rationale": "Keeps the current range unchanged; no rebalance proposed.",
+      "metrics": {
+        "estimatedGasWei": "0",
+        "estimatedFeeEfficiency": 50,
+        "estimatedSlippageBps": 0,
+        "riskScore": 100,
+        "executionFeasible": true,
+        "widthEfficiency": 100,
+        "positioningScore": 0
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 0,
+          "risk": 0,
+          "gas": 100,
+          "feasibility": 100
+        },
+        "totalScore": 50
+      },
+      "isWinner": false
+    },
+    {
+      "candidateId": "baseline-symmetric-range",
+      "displayLabel": "Baseline Strategy",
+      "agentIdOnChain": null,
+      "proposedAction": {
+        "kind": "rebalance",
+        "newRange": {
+          "tickLower": -59150,
+          "tickUpper": -57150
+        }
+      },
+      "rationale": "Fixed 40-tick-spacing-wide symmetric range around current price, no volatility adjustment.",
+      "metrics": {
+        "estimatedGasWei": "3000000000000000",
+        "estimatedFeeEfficiency": 100,
+        "estimatedSlippageBps": 0,
+        "riskScore": 50,
+        "executionFeasible": true,
+        "widthEfficiency": 100,
+        "positioningScore": 100
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 0,
+          "feasibility": 100
+        },
+        "totalScore": 75
+      },
+      "isWinner": false
+    }
+  ],
+  "winnerCandidateId": "rangekeeper-v1",
+  "executionPlan": {
+    "jobId": "agent-arena-loop-79bf0884-1d87-49e4-9b9a-2c60e750e693",
+    "candidateId": "rangekeeper-v1",
+    "positionTokenId": 37059,
+    "network": "bsc-testnet",
+    "currentRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "targetRange": {
+      "tickLower": -59150,
+      "tickUpper": -57150
+    },
+    "liquidityToMigrate": "7039210414078688290",
+    "expectedAmounts": {
+      "amount0": "12202427296506771186",
+      "amount1": "0"
+    },
+    "steps": [
+      {
+        "kind": "decreaseLiquidity",
+        "description": "Remove all 7039210414078688290 liquidity from position #37059 (range [-58050, -56050))",
+        "tokenId": 37059,
+        "liquidity": "7039210414078688290",
+        "amount0Min": "12080403023541703474",
+        "amount1Min": "0",
+        "deadline": 1787430669,
+        "estimatedGasWei": "1000000000000000"
+      },
+      {
+        "kind": "collect",
+        "description": "Collect all owed token0/token1 (principal + fees) from position #37059 to 0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+        "tokenId": 37059,
+        "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+        "amount0Max": "340282366920938463463374607431768211455",
+        "amount1Max": "340282366920938463463374607431768211455",
+        "estimatedGasWei": "1000000000000000"
+      },
+      {
+        "kind": "mint",
+        "description": "Mint a new position on [-59150, -57150) using the collected amounts",
+        "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+        "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+        "fee": 2500,
+        "tickLower": -59150,
+        "tickUpper": -57150,
+        "amount0Desired": "12202427296506771186",
+        "amount1Desired": "0",
+        "amount0Min": "12080403023541703474",
+        "amount1Min": "0",
+        "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+        "deadline": 1787430669,
+        "estimatedGasWei": "1000000000000000"
+      }
+    ],
+    "estimatedGasWei": "3000000000000000",
+    "feasible": true,
+    "feasibilityReasons": [],
+    "status": "EXECUTION_NOT_SENT"
+  },
+  "simulation": {
+    "jobId": "agent-arena-loop-79bf0884-1d87-49e4-9b9a-2c60e750e693",
+    "candidateId": "rangekeeper-v1",
+    "positionTokenId": 37059,
+    "action": "REBALANCE",
+    "oldRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "targetRange": {
+      "tickLower": -59150,
+      "tickUpper": -57150
+    },
+    "targetRangeValidity": {
+      "status": "VALID",
+      "detail": "[-59150, -57150) is a valid, tick-spacing-aligned range"
+    },
+    "mintStructuralValidity": {
+      "status": "VALID",
+      "detail": "token ordering and non-zero amounts confirmed"
+    },
+    "ratioAdjustment": {
+      "status": "NOT_IMPLEMENTED",
+      "strandedAmount0": "12202427296506771186",
+      "strandedAmount1": "0",
+      "strandedFraction0": 1,
+      "strandedFraction1": 0,
+      "ratioFixRequired": true,
+      "detail": "without a ratio-fixing swap, ~100.0% of token0 and ~0.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-59150, -57150) needs at the current price"
+    },
+    "slippageProtection": {
+      "status": "VALID",
+      "detail": "amount0Min/amount1Min are nonzero wherever a nonzero amount is expected"
+    },
+    "pureExecutable": false,
+    "pureExecutableReasons": [
+      "ratio-fixing swap required but not implemented: without a ratio-fixing swap, ~100.0% of token0 and ~0.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-59150, -57150) needs at the current price"
+    ],
+    "status": "SIMULATED",
+    "decreaseLiquidityLive": {
+      "status": "VALID",
+      "detail": "live eth_estimateGas succeeded against current BSC testnet chain state",
+      "gasEstimateWei": "21542900000000"
+    },
+    "collectLive": {
+      "status": "VALID",
+      "detail": "live eth_estimateGas succeeded against current BSC testnet chain state",
+      "gasEstimateWei": "17529100000000"
+    },
+    "mintLive": {
+      "status": "NOT_ATTEMPTED",
+      "detail": "mint's gas/validity depends on token balances and an NFPM approval that only exist after decreaseLiquidity + collect actually execute -- not simulatable against current pre-decrease wallet state without a state-override eth_call (not attempted this slice)."
+    },
+    "liveGasEstimateWei": "39072000000000",
+    "executable": false,
+    "executableReasons": [
+      "ratio-fixing swap required but not implemented: without a ratio-fixing swap, ~100.0% of token0 and ~0.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-59150, -57150) needs at the current price"
+    ]
+  },
+  "generatedAt": "2026-08-22T20:21:11.178Z"
+}

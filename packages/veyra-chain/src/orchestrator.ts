@@ -16,6 +16,7 @@ import { resolve } from "node:path";
 import { encodeFunctionData, decodeEventLog, type PublicClient, type Address } from "viem";
 import {
   evaluate,
+  evaluateV2,
   planExecution,
   computeCollectedAmounts,
   createRun,
@@ -81,6 +82,13 @@ export interface RunAgentArenaLoopOpts {
   docsDir: string; // absolute path to the repo's docs/ directory
   chainId?: number; // default 97
   policy?: ExecutionPolicy; // default DEFAULT_EXECUTION_POLICY
+  /**
+   * Which evaluator to run. Default "v1" -- the exact evaluator that produced Rounds #1-#7 and
+   * every existing test/archive, byte-for-byte unchanged. "v2" uses evaluateV2 (market-aware
+   * positioning signal) and writes to SEPARATE archive directories (arena-rounds-v2/,
+   * agent-arena-runs-v2/) so v1's historical record is never touched by a v2 run.
+   */
+  evaluatorVersion?: "v1" | "v2";
 }
 
 export interface AgentArenaLoopResult {
@@ -101,8 +109,10 @@ interface BlockTrace {
 
 export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<AgentArenaLoopResult> {
   const chainId = opts.chainId ?? 97;
-  const arenaRoundsDir = resolve(opts.docsDir, "arena-rounds");
-  const runsDir = resolve(opts.docsDir, "agent-arena-runs");
+  const evaluatorVersion = opts.evaluatorVersion ?? "v1";
+  const arenaRoundsDir = resolve(opts.docsDir, evaluatorVersion === "v2" ? "arena-rounds-v2" : "arena-rounds");
+  const runsDir = resolve(opts.docsDir, evaluatorVersion === "v2" ? "agent-arena-runs-v2" : "agent-arena-runs");
+  const liveEvalPointerName = evaluatorVersion === "v2" ? "veyra-live-evaluation-v2.json" : "veyra-live-evaluation.json";
   const runId = randomUUID();
   let run = createRun(runId);
   const txRecords: TxRecord[] = [];
@@ -129,7 +139,7 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
   // --- EVALUATE: the exact same 3 strategies + common evaluator the real arena uses. The
   // winner is whichever proposal ACTUALLY scores best -- never assumed to be RangeKeeper. ---
   const proposals = await Promise.all([rangeKeeperStrategy(job, snapshot), baselineHoldStrategy(job, snapshot), baselineSymmetricRangeStrategy(job, snapshot)]);
-  const evaluationResult = evaluate(job, snapshot, proposals);
+  const evaluationResult = evaluatorVersion === "v2" ? evaluateV2(job, snapshot, proposals) : evaluate(job, snapshot, proposals);
   const winner = evaluationResult.winner;
 
   const roundId = nextRoundId(arenaRoundsDir);
@@ -158,6 +168,7 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
   // runLiveArenaEvaluation.ts's output (same executionPlan/simulation fields) so
   // renderArenaPage.ts works against a round produced by EITHER path.
   const roundRecordContent = {
+    evaluatorPolicy: evaluatorVersion === "v2" ? "v2-market-aware" : "v1",
     veyraAgentId: VEYRA_AGENT_ID_ON_CHAIN,
     ownerWallet: opts.ownerWallet,
     positionTokenId: opts.positionTokenId.toString(),
@@ -174,7 +185,7 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
   const roundArtifactHash = sha256(JSON.stringify(roundRecordContent));
   const fullRoundRecord = { roundId, artifactHash: roundArtifactHash, ...roundRecordContent };
   writeFileSync(resolve(arenaRoundsDir, `round-${String(roundId).padStart(4, "0")}.json`), JSON.stringify(fullRoundRecord, null, 2));
-  writeFileSync(resolve(opts.docsDir, "veyra-live-evaluation.json"), JSON.stringify(fullRoundRecord, null, 2));
+  writeFileSync(resolve(opts.docsDir, liveEvalPointerName), JSON.stringify(fullRoundRecord, null, 2));
 
   const policy = opts.policy ?? DEFAULT_EXECUTION_POLICY;
   let executionStartBlock: bigint | null = null;
@@ -212,7 +223,11 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
       simulationBlock: simulationBlock.toString(),
       executionStartBlock: executionStartBlock.toString(),
     };
-    verificationDetail = { authorization, blockTrace };
+    // authorization.observationAgeBlocks is a bigint|null -- convert before it ever reaches a
+    // JSON.stringify call in archiveAndReturn(). Bug found live: this path is only exercised
+    // once a rebalance actually wins, which no run had done until Test B's controlled market
+    // transition -- HOLD-only runs never touched this line, so it went uncaught until now.
+    verificationDetail = { authorization: bigintsToStrings(authorization), blockTrace };
 
     if (!authorization.authorized) {
       run = transition(run, "EXECUTION_BLOCKED", authorization.reasons.join("; "));
