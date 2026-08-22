@@ -14,7 +14,10 @@ import type {
 } from "./types.js";
 
 // Placeholder until the execution-integration slice wires in a live eth_estimateGas call.
-const PLACEHOLDER_REBALANCE_GAS_WEI = 3_000_000_000_000_000n; // ~0.003 BNB-equivalent, round number
+// Exported so execution.ts's per-step gas placeholders sum to exactly this same figure --
+// one placeholder value for "a rebalance costs about this much gas," not two independently
+// invented numbers that happen to coincide.
+export const PLACEHOLDER_REBALANCE_GAS_WEI = 3_000_000_000_000_000n; // ~0.003 BNB-equivalent, round number
 const REFERENCE_WIDTH_MULTIPLIER = 40; // "wide/safe" reference range, in units of tickSpacing
 
 function actionRange(

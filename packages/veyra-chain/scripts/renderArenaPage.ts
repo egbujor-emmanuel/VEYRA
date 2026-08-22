@@ -71,6 +71,16 @@ interface RoundRecord {
     isWinner: boolean;
   }>;
   winnerCandidateId: string;
+  executionPlan: {
+    status: "EXECUTION_NOT_SENT";
+    feasible: boolean;
+    feasibilityReasons: string[];
+    targetRange: { tickLower: number; tickUpper: number } | null;
+    liquidityToMigrate: string;
+    expectedAmounts: { amount0: string; amount1: string };
+    estimatedGasWei: string;
+    steps: Array<{ kind: string; description: string }>;
+  };
   generatedAt: string;
 }
 
@@ -189,6 +199,8 @@ function render(record: RoundRecord): string {
   .winner-banner .name { font-size: 1.15rem; font-weight: 700; }
   .winner-banner .score { margin-left: auto; font-family: ui-monospace, monospace; font-size: 1.3rem; font-weight: 800; color: var(--good); }
   .empty-state { color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
+  .plan-steps { margin: 0; padding-left: 20px; font-size: 0.88rem; line-height: 1.7; }
+  .plan-steps .step-kind { font-family: ui-monospace, monospace; color: var(--accent); font-weight: 700; }
   footer { color: var(--muted); font-size: 0.75rem; margin-top: 30px; }
   code.hash { font-family: ui-monospace, monospace; word-break: break-all; }
 </style>
@@ -259,6 +271,25 @@ function render(record: RoundRecord): string {
 
   <div class="cards">
     ${record.proposals.map(candidateCard).join("\n")}
+  </div>
+
+  <div class="panel">
+    <h2>Execution Plan for the Winner — <span class="tag tag-supplied">${record.executionPlan.status}</span></h2>
+    ${
+      record.executionPlan.steps.length === 0
+        ? `<p class="empty-state">The winning proposal was <strong>hold</strong> — no on-chain action is required, so no plan steps exist. This is a valid, complete outcome, not a missing feature.</p>`
+        : `<ol class="plan-steps">
+            ${record.executionPlan.steps.map((s) => `<li><span class="step-kind">${esc(s.kind)}</span> — ${esc(s.description)}</li>`).join("\n")}
+          </ol>
+          <div class="kv" style="margin-top:12px;">
+            <div><span class="k">Target range ${badge("DERIVED")}</span><span class="v">${record.executionPlan.targetRange ? `[${record.executionPlan.targetRange.tickLower}, ${record.executionPlan.targetRange.tickUpper})` : "n/a"}</span></div>
+            <div><span class="k">Liquidity to migrate ${badge("OBSERVED")}</span><span class="v">${record.executionPlan.liquidityToMigrate}</span></div>
+            <div><span class="k">Expected amounts ${badge("DERIVED")}</span><span class="v">amount0=${record.executionPlan.expectedAmounts.amount0}, amount1=${record.executionPlan.expectedAmounts.amount1}</span></div>
+            <div><span class="k">Estimated gas ${badge("DERIVED")}</span><span class="v">${record.executionPlan.estimatedGasWei} wei (placeholder)</span></div>
+            <div><span class="k">Feasible</span><span class="v">${record.executionPlan.feasible ? "yes" : `no — ${record.executionPlan.feasibilityReasons.join("; ")}`}</span></div>
+          </div>`
+    }
+    <p class="fine-print">No transaction has been sent. This plan exists to prove the winning proposal converts into concrete, executable PancakeSwap V3 operations — decreaseLiquidity → collect → mint — before anything is risked on-chain.</p>
   </div>
 
   <div class="panel">

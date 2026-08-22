@@ -18,11 +18,13 @@ import { dirname, resolve } from "node:path";
 import { createPublicClient, http } from "viem";
 import {
   evaluate,
+  planExecution,
   rangeKeeperStrategy,
   baselineHoldStrategy,
   baselineSymmetricRangeStrategy,
   VEYRA_AGENT_ID_ON_CHAIN,
   type JobSpec,
+  type CurrentPositionState,
 } from "@veyra/core";
 import { ensureTestnetRpcOverride } from "../src/network.js";
 import { readPositionObservation, toMarketSnapshot } from "../src/positionReader.js";
@@ -156,7 +158,28 @@ async function main() {
   section("Winner");
   console.log(`${result.winner.proposal.displayLabel} (${result.winner.proposal.candidateId}), score ${result.winner.score.totalScore.toFixed(2)}`);
   console.log(`Action: ${JSON.stringify(result.winner.proposal.proposedAction)}`);
-  console.log(`\nNo execution performed -- this slice stops at read -> propose -> evaluate -> rank.`);
+
+  section("Execution Plan (planned only -- status is always EXECUTION_NOT_SENT; no signer, no transaction)");
+  const currentPosition: CurrentPositionState = {
+    tokenId: Number(observation.positionTokenId),
+    token0: observation.token0,
+    token1: observation.token1,
+    fee: observation.fee,
+    tickLower: observation.tickLower,
+    tickUpper: observation.tickUpper,
+    liquidity: observation.positionLiquidity,
+    sqrtPriceX96: observation.sqrtPriceX96,
+  };
+  const plan = planExecution({ job, proposal: result.winner.proposal, currentPosition, recipient: VEYRA_WALLET });
+  console.log(`status: ${plan.status}`);
+  console.log(`feasible: ${plan.feasible}${plan.feasibilityReasons.length ? ` (${plan.feasibilityReasons.join("; ")})` : ""}`);
+  console.log(`steps: ${plan.steps.length === 0 ? "(none -- hold requires no on-chain action)" : plan.steps.map((s) => s.kind).join(" -> ")}`);
+  if (plan.steps.length > 0) {
+    for (const s of plan.steps) console.log(`  - ${s.description}`);
+    console.log(`expectedAmounts (DERIVED via the real V3 liquidity formula, from OBSERVED current state): amount0=${plan.expectedAmounts.amount0}, amount1=${plan.expectedAmounts.amount1}`);
+  }
+  console.log(`estimatedGasWei: ${plan.estimatedGasWei} (placeholder -- see execution.ts)`);
+  console.log(`\nNo execution performed -- this slice stops at read -> propose -> evaluate -> rank -> plan.`);
 
   const roundId = nextRoundId();
   const recordContent = {
@@ -203,6 +226,19 @@ async function main() {
       isWinner: s.isWinner,
     })),
     winnerCandidateId: result.winner.proposal.candidateId,
+    executionPlan: {
+      ...plan,
+      liquidityToMigrate: plan.liquidityToMigrate.toString(),
+      expectedAmounts: { amount0: plan.expectedAmounts.amount0.toString(), amount1: plan.expectedAmounts.amount1.toString() },
+      estimatedGasWei: plan.estimatedGasWei.toString(),
+      steps: plan.steps.map((s) => {
+        const step: Record<string, unknown> = { ...s };
+        for (const [k, v] of Object.entries(step)) {
+          if (typeof v === "bigint") step[k] = v.toString();
+        }
+        return step;
+      }),
+    },
     generatedAt: new Date().toISOString(),
   };
 
