@@ -1,0 +1,32 @@
+{
+  "network": "bsc-testnet",
+  "chainId": 97,
+  "veyraAgentId": 1890,
+  "signerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "demoTokenAddress": "0x00efbcce2ff935332fc66851cfd34a000f6c7b8d",
+  "demoTokenSymbol": "VUSD",
+  "wbnbAddress": "0xae13d989dac2f0debff460ac112a837c89baa7cd",
+  "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+  "fee": 2500,
+  "tickSpacing": 50,
+  "token0": "0x00efbcce2ff935332fc66851cfd34a000f6c7b8d",
+  "token1": "0xae13d989dac2f0debff460ac112a837c89baa7cd",
+  "tickLower": -59050,
+  "tickUpper": -55050,
+  "positionTokenId": "37058",
+  "liquidity": "3624304981691222991",
+  "amount0Deposited": "5947044489544840473",
+  "amount1Deposited": "20000000000000000",
+  "verifiedOwner": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "transactions": {
+    "deployDemoToken": "0x3765ff7c2dd3b8ca1452f6dfd8a3b3879586df18ff8ed1d451bd800547424488",
+    "wrapWbnb": "0x6362f70eca42a0c3c1f78ccc5ed6c6910c1f69d8f50eb2b51ab2ec71b5679ca1",
+    "createAndInitializePool": "0x2206e79fd37a7012e08d97805ec55603d4f89af810fb252480a977eb41fcadf8",
+    "mint": "0x5c47fdf950bf5d84df4791eccf70a5d2db251df4f002b1f40f3fa75d62f3ee75"
+  },
+  "slot0AfterMint": {
+    "sqrtPriceX96": "4574240095500993253416187062",
+    "tick": -57041
+  },
+  "verifiedAt": "2026-08-22T12:30:15.876Z"
+}
