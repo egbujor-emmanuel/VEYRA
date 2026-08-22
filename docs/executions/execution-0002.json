@@ -1,0 +1,117 @@
+{
+  "executionId": 2,
+  "artifactHash": "822f653646afa7d1417588848d36e82c43371252b635fe49bd2a8f1494d02386",
+  "kind": "CONTROLLED_TESTNET_EXECUTION",
+  "label": "Controlled Testnet Execution -- completion of execution-0001 after a mint-amount bug fix. NOT autonomous.",
+  "generatedAt": "2026-08-22T15:03:53.666Z",
+  "network": "bsc-testnet",
+  "predecessorExecutionId": 1,
+  "predecessorArtifactHash": "fb6b1e38524dd7505fcdf1f15a33c575e67bc21e59b4efdf152e043f126e24ad",
+  "rootCause": "execution-0001's mint used the wallet's TOTAL post-collect token0 balance (which included a large pre-existing balance unrelated to this position) instead of the amount this operation actually yielded (the position's own pre-collect tokensOwed0). Fixed by using the exact tokensOwed0/tokensOwed1 values already captured in execution-0001's Step 6, verified against the position's now-zero tokensOwed and sufficient existing NFPM allowances before signing.",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "winningProposal": {
+    "candidateId": "rangekeeper-v1",
+    "displayLabel": "Our Agent",
+    "agentIdOnChain": 1890,
+    "proposedAction": {
+      "kind": "rebalance",
+      "newRange": {
+        "tickLower": -58050,
+        "tickUpper": -56050
+      }
+    },
+    "rationale": "Centered a 2000-tick-wide range on the current tick, widened for recent volatility of 0 bps (risk tolerance: medium)."
+  },
+  "mintArgs": {
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "fee": 2500,
+    "tickLower": -58050,
+    "tickUpper": -56050,
+    "amount0Desired": "5947044489544840472",
+    "amount1Desired": "19999999999999999",
+    "amount0Min": "5887574044649392067",
+    "amount1Min": "19799999999999999",
+    "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+    "deadline": "1787411626"
+  },
+  "reusedFromPredecessor": {
+    "decreaseLiquidityTx": {
+      "step": "decreaseLiquidity",
+      "hash": "0x4528b2034cef3a3a3914925f21d42eb26eca943706b7dd1e873cae893c56cbc4",
+      "gasUsed": "144720",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "126587261"
+    },
+    "collectTx": {
+      "step": "collect",
+      "hash": "0x7345f0a3c088282c7df1cc50667b46ba861ca4c0e84a041b29a3d1a1966d8470",
+      "gasUsed": "101593",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "126587265"
+    },
+    "approveToken0Tx": {
+      "step": "approve-token0",
+      "hash": "0x1b9244fc98148c4bfc3d2e48caff00ca7a3af8f68195172548d487564b68b4a1",
+      "gasUsed": "29099",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "126587271"
+    },
+    "approveToken1Tx": {
+      "step": "approve-token1",
+      "hash": "0x6a1235ea0eee6cf0e0e43f16f78b6a3cfd3ee34f4c9d424b18c99de5a3a46176",
+      "gasUsed": "46064",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "126587274"
+    }
+  },
+  "mintTx": {
+    "step": "mint",
+    "hash": "0x3974ed94c16c4f0140402de2a19bc0941813462d774d03536d1cb3fd5c89f140",
+    "gasUsed": "451933",
+    "gasPriceWei": "100000000",
+    "status": "success",
+    "blockNumber": "126588006"
+  },
+  "oldPosition": {
+    "tokenId": "37058",
+    "positionTokenId": "37058",
+    "blockNumber": "126587251",
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "fee": 2500,
+    "tickLower": -59050,
+    "tickUpper": -55050,
+    "positionLiquidity": "3624304981691222991",
+    "token0Decimals": 18,
+    "token1Decimals": 18,
+    "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "sqrtPriceX96": "4574240095500993253416187062",
+    "currentTick": -57041,
+    "poolLiquidity": "3624304981691222991"
+  },
+  "newPosition": {
+    "tokenId": "37059",
+    "positionTokenId": "37059",
+    "blockNumber": "126588009",
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "fee": 2500,
+    "tickLower": -58050,
+    "tickUpper": -56050,
+    "positionLiquidity": "7039210414078688290",
+    "token0Decimals": 18,
+    "token1Decimals": 18,
+    "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "sqrtPriceX96": "4574240095500993253416187062",
+    "currentTick": -57041,
+    "poolLiquidity": "7039210414078688290"
+  },
+  "verified": true,
+  "status": "EXECUTED"
+}
