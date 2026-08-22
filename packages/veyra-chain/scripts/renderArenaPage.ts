@@ -81,6 +81,26 @@ interface RoundRecord {
     estimatedGasWei: string;
     steps: Array<{ kind: string; description: string }>;
   };
+  simulation: {
+    status: "SIMULATED";
+    action: "HOLD" | "REBALANCE";
+    targetRangeValidity: { status: string; detail: string };
+    mintStructuralValidity: { status: string; detail: string };
+    ratioAdjustment: {
+      status: string;
+      ratioFixRequired: boolean;
+      strandedFraction0: number;
+      strandedFraction1: number;
+      detail: string;
+    };
+    slippageProtection: { status: string; detail: string };
+    decreaseLiquidityLive: { status: string; detail: string; gasEstimateWei?: string };
+    collectLive: { status: string; detail: string; gasEstimateWei?: string };
+    mintLive: { status: string; detail: string };
+    liveGasEstimateWei: string | null;
+    executable: boolean;
+    executableReasons: string[];
+  };
   generatedAt: string;
 }
 
@@ -96,6 +116,22 @@ function actionText(action: RoundRecord["proposals"][number]["proposedAction"]):
 
 function badge(tier: "OBSERVED" | "DERIVED" | "SUPPLIED" | "SIMULATED"): string {
   return `<span class="tag tag-${tier.toLowerCase()}">${tier}</span>`;
+}
+
+function statusPill(status: string): string {
+  const cls =
+    status === "VALID"
+      ? "pill-valid"
+      : status === "INVALID"
+        ? "pill-invalid"
+        : status === "NOT_IMPLEMENTED"
+          ? "pill-warn"
+          : "pill-muted";
+  return `<span class="pill ${cls}">${esc(status)}</span>`;
+}
+
+function checkRow(label: string, status: string, detail: string): string {
+  return `<div class="check-row"><span class="check-label">${esc(label)}</span>${statusPill(status)}<span class="check-detail">${esc(detail)}</span></div>`;
 }
 
 function candidateCard(p: RoundRecord["proposals"][number]): string {
@@ -201,6 +237,18 @@ function render(record: RoundRecord): string {
   .empty-state { color: var(--muted); font-size: 0.88rem; line-height: 1.5; }
   .plan-steps { margin: 0; padding-left: 20px; font-size: 0.88rem; line-height: 1.7; }
   .plan-steps .step-kind { font-family: ui-monospace, monospace; color: var(--accent); font-weight: 700; }
+  .check-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: 0.85rem; flex-wrap: wrap; }
+  .check-row:last-child { border-bottom: none; }
+  .check-label { min-width: 150px; color: #cfd3e0; font-weight: 600; }
+  .check-detail { color: var(--muted); font-size: 0.8rem; flex: 1; }
+  .pill { font-size: 0.68rem; font-weight: 800; letter-spacing: 0.03em; padding: 2px 9px; border-radius: 20px; }
+  .pill-valid { background: rgba(47,191,113,0.18); color: var(--good); }
+  .pill-invalid { background: rgba(224,90,79,0.18); color: var(--bad); }
+  .pill-warn { background: rgba(224,165,48,0.18); color: var(--warn); }
+  .pill-muted { background: rgba(139,145,167,0.18); color: var(--muted); }
+  .verdict-banner { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; font-weight: 700; margin-top: 14px; }
+  .verdict-yes { background: rgba(47,191,113,0.12); color: var(--good); border: 1px solid rgba(47,191,113,0.4); }
+  .verdict-no { background: rgba(224,90,79,0.12); color: var(--bad); border: 1px solid rgba(224,90,79,0.4); }
   footer { color: var(--muted); font-size: 0.75rem; margin-top: 30px; }
   code.hash { font-family: ui-monospace, monospace; word-break: break-all; }
 </style>
@@ -290,6 +338,33 @@ function render(record: RoundRecord): string {
           </div>`
     }
     <p class="fine-print">No transaction has been sent. This plan exists to prove the winning proposal converts into concrete, executable PancakeSwap V3 operations — decreaseLiquidity → collect → mint — before anything is risked on-chain.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Simulation — <span class="tag tag-supplied">${record.simulation.status}</span> · zero transaction submission</h2>
+    <p class="fine-print" style="margin:0 0 14px;">
+      Three separate jobs, kept separate: the evaluator decides what looks best; the planner
+      determines what would have to happen; this simulation determines whether that plan is
+      actually safe/valid enough to execute. A high-scoring proposal is not automatically an
+      executable transaction plan.
+    </p>
+    ${
+      record.simulation.action === "HOLD"
+        ? `<p class="empty-state">The winner was <strong>hold</strong> — simulation is a genuine no-op. Every check below is not applicable, not a manufactured pass.</p>`
+        : `
+      ${checkRow("Target range", record.simulation.targetRangeValidity.status, record.simulation.targetRangeValidity.detail)}
+      ${checkRow("Mint (structural)", record.simulation.mintStructuralValidity.status, record.simulation.mintStructuralValidity.detail)}
+      ${checkRow("Slippage protection", record.simulation.slippageProtection.status, record.simulation.slippageProtection.detail)}
+      ${checkRow("Ratio adjustment", record.simulation.ratioAdjustment.status, record.simulation.ratioAdjustment.detail)}
+      ${checkRow("decreaseLiquidity (LIVE eth_estimateGas)", record.simulation.decreaseLiquidityLive.status, record.simulation.decreaseLiquidityLive.detail + (record.simulation.decreaseLiquidityLive.gasEstimateWei ? ` — ${record.simulation.decreaseLiquidityLive.gasEstimateWei} wei` : ""))}
+      ${checkRow("collect (LIVE eth_estimateGas)", record.simulation.collectLive.status, record.simulation.collectLive.detail + (record.simulation.collectLive.gasEstimateWei ? ` — ${record.simulation.collectLive.gasEstimateWei} wei` : ""))}
+      ${checkRow("mint (LIVE)", record.simulation.mintLive.status, record.simulation.mintLive.detail)}
+      `
+    }
+    <div class="verdict-banner ${record.simulation.executable ? "verdict-yes" : "verdict-no"}">
+      executable: ${record.simulation.executable ? "YES" : "NO"}
+      ${record.simulation.executableReasons.length ? `<span style="font-weight:400;font-size:0.8rem;">— ${esc(record.simulation.executableReasons.join("; "))}</span>` : ""}
+    </div>
   </div>
 
   <div class="panel">

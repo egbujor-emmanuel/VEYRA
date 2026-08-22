@@ -28,6 +28,7 @@ import {
 } from "@veyra/core";
 import { ensureTestnetRpcOverride } from "../src/network.js";
 import { readPositionObservation, toMarketSnapshot } from "../src/positionReader.js";
+import { simulateLive } from "../src/simulate.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 // __dirname at runtime is dist/scripts/ -- 4 levels up reaches the repo root.
@@ -47,6 +48,16 @@ function nextRoundId(): number {
 
 function sha256(content: string): string {
   return createHash("sha256").update(content).digest("hex");
+}
+
+/** Recursively stringifies every bigint in an object/array so JSON.stringify doesn't throw. */
+function bigintsToStrings(value: unknown): unknown {
+  if (typeof value === "bigint") return value.toString();
+  if (Array.isArray(value)) return value.map(bigintsToStrings);
+  if (value !== null && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, bigintsToStrings(v)]));
+  }
+  return value;
 }
 
 // The position minted in the previous slice (docs/VEYRA_POSITION_VERIFICATION.md). Once a
@@ -179,7 +190,28 @@ async function main() {
     console.log(`expectedAmounts (DERIVED via the real V3 liquidity formula, from OBSERVED current state): amount0=${plan.expectedAmounts.amount0}, amount1=${plan.expectedAmounts.amount1}`);
   }
   console.log(`estimatedGasWei: ${plan.estimatedGasWei} (placeholder -- see execution.ts)`);
-  console.log(`\nNo execution performed -- this slice stops at read -> propose -> evaluate -> rank -> plan.`);
+
+  section("Simulation (zero transaction submission; live checks use estimateContractGas as the wallet, no signer)");
+  const sim = await simulateLive({
+    client,
+    plan,
+    currentSqrtPriceX96: observation.sqrtPriceX96,
+    tickSpacing: snapshot.tickSpacing,
+    account: VEYRA_WALLET,
+  });
+  console.log(`action: ${sim.action}`);
+  if (sim.action === "REBALANCE") {
+    console.log(`targetRangeValidity: ${sim.targetRangeValidity.status} -- ${sim.targetRangeValidity.detail}`);
+    console.log(`mintStructuralValidity: ${sim.mintStructuralValidity.status} -- ${sim.mintStructuralValidity.detail}`);
+    console.log(`slippageProtection: ${sim.slippageProtection.status} -- ${sim.slippageProtection.detail}`);
+    console.log(`ratioAdjustment: ${sim.ratioAdjustment.status} (fixRequired=${sim.ratioAdjustment.ratioFixRequired}) -- ${sim.ratioAdjustment.detail}`);
+    console.log(`decreaseLiquidity (LIVE): ${sim.decreaseLiquidityLive.status} -- ${sim.decreaseLiquidityLive.detail}${sim.decreaseLiquidityLive.gasEstimateWei ? ` (${sim.decreaseLiquidityLive.gasEstimateWei} wei)` : ""}`);
+    console.log(`collect (LIVE): ${sim.collectLive.status} -- ${sim.collectLive.detail}${sim.collectLive.gasEstimateWei ? ` (${sim.collectLive.gasEstimateWei} wei)` : ""}`);
+    console.log(`mint (LIVE): ${sim.mintLive.status} -- ${sim.mintLive.detail}`);
+  }
+  console.log(`\nexecutable: ${sim.executable ? "YES" : "NO"}${sim.executableReasons.length ? ` -- ${sim.executableReasons.join("; ")}` : ""}`);
+  console.log(`status: ${sim.status}`);
+  console.log(`\nNo execution performed -- this slice stops at read -> propose -> evaluate -> rank -> plan -> simulate.`);
 
   const roundId = nextRoundId();
   const recordContent = {
@@ -226,19 +258,8 @@ async function main() {
       isWinner: s.isWinner,
     })),
     winnerCandidateId: result.winner.proposal.candidateId,
-    executionPlan: {
-      ...plan,
-      liquidityToMigrate: plan.liquidityToMigrate.toString(),
-      expectedAmounts: { amount0: plan.expectedAmounts.amount0.toString(), amount1: plan.expectedAmounts.amount1.toString() },
-      estimatedGasWei: plan.estimatedGasWei.toString(),
-      steps: plan.steps.map((s) => {
-        const step: Record<string, unknown> = { ...s };
-        for (const [k, v] of Object.entries(step)) {
-          if (typeof v === "bigint") step[k] = v.toString();
-        }
-        return step;
-      }),
-    },
+    executionPlan: bigintsToStrings(plan),
+    simulation: bigintsToStrings(sim),
     generatedAt: new Date().toISOString(),
   };
 

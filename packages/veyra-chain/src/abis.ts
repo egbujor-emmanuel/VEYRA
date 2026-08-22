@@ -70,6 +70,49 @@ export const NFPM_ABI = [
   },
   {
     type: "function",
+    name: "decreaseLiquidity",
+    stateMutability: "payable",
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "tokenId", type: "uint256" },
+          { name: "liquidity", type: "uint128" },
+          { name: "amount0Min", type: "uint256" },
+          { name: "amount1Min", type: "uint256" },
+          { name: "deadline", type: "uint256" },
+        ],
+      },
+    ],
+    outputs: [
+      { name: "amount0", type: "uint256" },
+      { name: "amount1", type: "uint256" },
+    ],
+  },
+  {
+    type: "function",
+    name: "collect",
+    stateMutability: "payable",
+    inputs: [
+      {
+        name: "params",
+        type: "tuple",
+        components: [
+          { name: "tokenId", type: "uint256" },
+          { name: "recipient", type: "address" },
+          { name: "amount0Max", type: "uint128" },
+          { name: "amount1Max", type: "uint128" },
+        ],
+      },
+    ],
+    outputs: [
+      { name: "amount0", type: "uint256" },
+      { name: "amount1", type: "uint256" },
+    ],
+  },
+  {
+    type: "function",
     name: "positions",
     stateMutability: "view",
     inputs: [{ name: "tokenId", type: "uint256" }],

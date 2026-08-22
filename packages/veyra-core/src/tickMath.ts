@@ -102,3 +102,43 @@ export function getAmountsForLiquidity(
   // Current price above the range: the position is entirely token1.
   return { amount0: 0n, amount1: amount1ForLiquidity(sqrtRatioLowerX96, sqrtRatioUpperX96, liquidity, Q96) };
 }
+
+function liquidityForAmount0(sqrtRatioLowerX96: bigint, sqrtRatioUpperX96: bigint, amount0: bigint, q96: bigint): bigint {
+  const intermediate = (sqrtRatioLowerX96 * sqrtRatioUpperX96) / q96;
+  return (amount0 * intermediate) / (sqrtRatioUpperX96 - sqrtRatioLowerX96);
+}
+
+function liquidityForAmount1(sqrtRatioLowerX96: bigint, sqrtRatioUpperX96: bigint, amount1: bigint, q96: bigint): bigint {
+  return (amount1 * q96) / (sqrtRatioUpperX96 - sqrtRatioLowerX96);
+}
+
+/**
+ * The exact inverse of {@link getAmountsForLiquidity}: the MAXIMUM liquidity mintable at
+ * [tickLower, tickUpper) given available (amount0, amount1) at the current price -- i.e. what
+ * `mint()` actually deploys when the held ratio doesn't exactly match what the range wants.
+ * Uniswap's own mint() uses the SMALLER of what each token alone would support and refunds the
+ * rest; this function is that same rule, so it can be used to quantify exactly how much of a
+ * mismatched deposit would be stranded/refunded (see execution/simulation's ratio-adjustment
+ * check) -- not a guess, the same formula the contract runs.
+ */
+export function getLiquidityForAmounts(
+  sqrtPriceX96: bigint,
+  tickLower: number,
+  tickUpper: number,
+  amount0: bigint,
+  amount1: bigint,
+): bigint {
+  const Q96 = 1n << 96n;
+  const sqrtRatioLowerX96 = getSqrtRatioAtTick(tickLower);
+  const sqrtRatioUpperX96 = getSqrtRatioAtTick(tickUpper);
+
+  if (sqrtPriceX96 <= sqrtRatioLowerX96) {
+    return liquidityForAmount0(sqrtRatioLowerX96, sqrtRatioUpperX96, amount0, Q96);
+  }
+  if (sqrtPriceX96 < sqrtRatioUpperX96) {
+    const liquidity0 = liquidityForAmount0(sqrtPriceX96, sqrtRatioUpperX96, amount0, Q96);
+    const liquidity1 = liquidityForAmount1(sqrtRatioLowerX96, sqrtPriceX96, amount1, Q96);
+    return liquidity0 < liquidity1 ? liquidity0 : liquidity1;
+  }
+  return liquidityForAmount1(sqrtRatioLowerX96, sqrtRatioUpperX96, amount1, Q96);
+}
