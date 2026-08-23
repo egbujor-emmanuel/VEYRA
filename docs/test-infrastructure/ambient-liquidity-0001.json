@@ -1,0 +1,47 @@
+{
+  "label": "TEST_INFRASTRUCTURE_AMBIENT_LIQUIDITY",
+  "note": "This position is NOT owned by VEYRA, is NOT part of VEYRA Agent #1890's identity/track record/execution history, and is never farmed or otherwise interacted with beyond this one mint. Its sole purpose is giving the isolated demo pool real depth at the current price so a corrective swap has something to trade against.",
+  "ambientWallet": "0x62472499C7390ee1dbfb45E782847b35c754C5f0",
+  "veyraWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "unaffectedReferencePosition": {
+    "tokenId": "37059",
+    "note": "Position #37059 itself was NOT read-modified by this script beyond the one slot0/positions read used to size the pre-flight quote check -- no transaction in this script touches it.",
+    "observedTick": -58150,
+    "observedRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    }
+  },
+  "funding": {
+    "nativeTransferTxHash": "SKIPPED_ALREADY_FUNDED",
+    "nativeTransferAmountWei": "30000000000000000",
+    "token0TransferTxHash": "SKIPPED_ALREADY_FUNDED",
+    "token0TransferAmount": "500000000000000000000",
+    "wrapTxHash": "SKIPPED_ALREADY_FUNDED",
+    "wrapAmountWei": "25000000000000000"
+  },
+  "ambientPosition": {
+    "mintTxHash": "0x095e5090d16861888273e98b63d8ddc72c8b9a08a984d2435346204961a6b74c",
+    "tickLower": -59150,
+    "tickUpper": -57150,
+    "amount0Desired": "500000000000000000000",
+    "amount1Desired": "25000000000000000"
+  },
+  "verification": {
+    "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "currentTick": -58150,
+    "poolLiquidity": "9385369569912515665",
+    "liquidityActive": true,
+    "tickInsideAmbientRange": true,
+    "quoterPreflightSucceeded": true,
+    "quoterPreflightDetail": {
+      "amountIn": "1000000000000000000",
+      "amountOut": "2958713407664751",
+      "sqrtPriceX96After": "4302468049797842560438682286",
+      "gasEstimate": "93480"
+    },
+    "safeToAuthorizeRealExecution": true
+  },
+  "generatedAt": "2026-08-23T02:08:18.659Z",
+  "artifactHash": "219047a5036dbbde3844a4e77ad9c3b2839fd7b8beae3ae420e7d99527a4f4c3"
+}

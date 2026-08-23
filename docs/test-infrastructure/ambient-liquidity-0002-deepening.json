@@ -1,0 +1,14 @@
+{
+  "label": "TEST_INFRASTRUCTURE_AMBIENT_LIQUIDITY_DEEPENING",
+  "note": "Follow-up to ambient-liquidity-0001.json -- adds more real depth to the SAME ambient position (#37062) because the first amount, while enough to make QuoterV2 succeed, was still a large enough fraction of the swap size to cause real price impact exceeding the ratio-mismatch threshold. Still not VEYRA's position, still not part of its track record.",
+  "ambientPositionTokenId": "37062",
+  "increaseLiquidityTxHash": "0xccb8e2f88d2ef52fbb7222a2adeffb393fb0ee5750c2bec45072752f06d8a79a",
+  "poolLiquidityAfter": "32746324555310195146",
+  "currentTick": -58150,
+  "quoterPreflight": {
+    "amountIn": "1000000000000000000",
+    "amountOut": "2970946109798573"
+  },
+  "generatedAt": "2026-08-23T02:15:02.312Z",
+  "artifactHash": "b286f434c47a1f4b1bd6e0a420807c4ad2d497898e0fd36399db09c186d89255"
+}
