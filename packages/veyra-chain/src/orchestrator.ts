@@ -329,9 +329,20 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
         mintAmount0 = postSwapBalance0 - baselineBalance0;
         mintAmount1 = postSwapBalance1 - baselineBalance1;
 
+        // ROOT-CAUSE FIX: a swap MOVES the pool's price -- validating the post-swap ratio (or
+        // computing mint's amountMin floor) against `freshSlot0`, which was read BEFORE the swap,
+        // checks the wrong price entirely. Found live: run-0004 computed a 0.7% stranded fraction
+        // against the pre-swap price and proceeded to MINT_PENDING; the real on-chain price (after
+        // the swap actually moved it) made the real achievable consumption worse, and mint()'s own
+        // slippage floor correctly reverted with "Price slippage check". Re-read slot0 HERE, after
+        // the swap's receipt is already confirmed, so every calculation from this point on (the
+        // ratio re-check immediately below, AND the mint amountMin floor further down) uses the
+        // price the mint() call will actually execute against.
+        const postSwapSlot0 = await opts.client.readContract({ address: observation.poolAddress, abi: POOL_ABI, functionName: "slot0" });
+
         // Refuse to mint if the ACTUAL resulting ratio (not the projection) is still outside tolerance.
-        const achievableLiquidity = getLiquidityForAmounts(freshSlot0[0], plan.targetRange.tickLower, plan.targetRange.tickUpper, mintAmount0, mintAmount1);
-        const consumed = getAmountsForLiquidity(freshSlot0[0], plan.targetRange.tickLower, plan.targetRange.tickUpper, achievableLiquidity);
+        const achievableLiquidity = getLiquidityForAmounts(postSwapSlot0[0], plan.targetRange.tickLower, plan.targetRange.tickUpper, mintAmount0, mintAmount1);
+        const consumed = getAmountsForLiquidity(postSwapSlot0[0], plan.targetRange.tickLower, plan.targetRange.tickUpper, achievableLiquidity);
         const strandedFraction0 = mintAmount0 === 0n ? 0 : Number(mintAmount0 - consumed.amount0) / Number(mintAmount0);
         const strandedFraction1 = mintAmount1 === 0n ? 0 : Number(mintAmount1 - consumed.amount1) / Number(mintAmount1);
         if (strandedFraction0 > RATIO_MISMATCH_THRESHOLD || strandedFraction1 > RATIO_MISMATCH_THRESHOLD) {

@@ -1,0 +1,305 @@
+{
+  "runArchiveId": 4,
+  "runId": "b9e77995-8cb6-4817-a6da-2a734e62a0e0",
+  "roundId": 7,
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "winnerCandidateId": "rangekeeper-v1",
+  "winningProposal": {
+    "candidateId": "rangekeeper-v1",
+    "displayLabel": "Our Agent",
+    "agentIdOnChain": 1890,
+    "proposedAction": {
+      "kind": "rebalance",
+      "newRange": {
+        "tickLower": -59150,
+        "tickUpper": -57150
+      }
+    },
+    "rationale": "Centered a 2000-tick-wide range on the current tick, widened for recent volatility of 0 bps (risk tolerance: medium)."
+  },
+  "plan": {
+    "jobId": "agent-arena-loop-b9e77995-8cb6-4817-a6da-2a734e62a0e0",
+    "candidateId": "rangekeeper-v1",
+    "positionTokenId": 37059,
+    "network": "bsc-testnet",
+    "currentRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "targetRange": {
+      "tickLower": -59150,
+      "tickUpper": -57150
+    },
+    "liquidityToMigrate": "7039210414078688290",
+    "expectedAmounts": {
+      "amount0": "12202427296506771186",
+      "amount1": "0"
+    },
+    "steps": [
+      {
+        "kind": "decreaseLiquidity",
+        "description": "Remove all 7039210414078688290 liquidity from position #37059 (range [-58050, -56050))",
+        "tokenId": 37059,
+        "liquidity": "7039210414078688290",
+        "amount0Min": "12080403023541703474",
+        "amount1Min": "0",
+        "deadline": 1787638208,
+        "estimatedGasWei": "1000000000000000"
+      },
+      {
+        "kind": "collect",
+        "description": "Collect all owed token0/token1 (principal + fees) from position #37059 to 0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+        "tokenId": 37059,
+        "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+        "amount0Max": "340282366920938463463374607431768211455",
+        "amount1Max": "340282366920938463463374607431768211455",
+        "estimatedGasWei": "1000000000000000"
+      },
+      {
+        "kind": "mint",
+        "description": "Mint a new position on [-59150, -57150) using the collected amounts",
+        "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+        "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+        "fee": 2500,
+        "tickLower": -59150,
+        "tickUpper": -57150,
+        "amount0Desired": "12202427296506771186",
+        "amount1Desired": "0",
+        "amount0Min": "12080403023541703474",
+        "amount1Min": "0",
+        "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+        "deadline": 1787638208,
+        "estimatedGasWei": "1000000000000000"
+      }
+    ],
+    "estimatedGasWei": "3000000000000000",
+    "feasible": true,
+    "feasibilityReasons": [],
+    "status": "EXECUTION_NOT_SENT"
+  },
+  "simulation": {
+    "jobId": "agent-arena-loop-b9e77995-8cb6-4817-a6da-2a734e62a0e0",
+    "candidateId": "rangekeeper-v1",
+    "positionTokenId": 37059,
+    "action": "REBALANCE",
+    "oldRange": {
+      "tickLower": -58050,
+      "tickUpper": -56050
+    },
+    "targetRange": {
+      "tickLower": -59150,
+      "tickUpper": -57150
+    },
+    "targetRangeValidity": {
+      "status": "VALID",
+      "detail": "[-59150, -57150) is a valid, tick-spacing-aligned range"
+    },
+    "mintStructuralValidity": {
+      "status": "VALID",
+      "detail": "token ordering and non-zero amounts confirmed"
+    },
+    "ratioAdjustment": {
+      "status": "NOT_IMPLEMENTED",
+      "strandedAmount0": "12202427296506771186",
+      "strandedAmount1": "0",
+      "strandedFraction0": 1,
+      "strandedFraction1": 0,
+      "ratioFixRequired": true,
+      "detail": "without a ratio-fixing swap, ~100.0% of token0 and ~0.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-59150, -57150) needs at the current price"
+    },
+    "slippageProtection": {
+      "status": "VALID",
+      "detail": "amount0Min/amount1Min are nonzero wherever a nonzero amount is expected"
+    },
+    "pureExecutable": false,
+    "pureExecutableReasons": [
+      "ratio-fixing swap required but not implemented: without a ratio-fixing swap, ~100.0% of token0 and ~0.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-59150, -57150) needs at the current price"
+    ],
+    "status": "SIMULATED",
+    "decreaseLiquidityLive": {
+      "status": "VALID",
+      "detail": "live eth_estimateGas succeeded against current BSC testnet chain state",
+      "gasEstimateWei": "21601900000000"
+    },
+    "collectLive": {
+      "status": "VALID",
+      "detail": "live eth_estimateGas succeeded against current BSC testnet chain state",
+      "gasEstimateWei": "17529100000000"
+    },
+    "ratioFixLive": {
+      "status": "VALID",
+      "detail": "real quote (18075362913316429 out for 6101213648253385102 in) projects clearing the ratio-mismatch threshold",
+      "swapRequirement": {
+        "direction": "SWAP_TOKEN0_FOR_TOKEN1",
+        "amountIn": "6101213648253385102",
+        "estimatedAmountOut": "18202040801007468",
+        "projectedAmount0AfterSwap": "6101213648253386084",
+        "projectedAmount1AfterSwap": "18202040801007468",
+        "projectedStrandedFraction0": 2.0274654705037578e-16,
+        "projectedStrandedFraction1": 5.4938894541135784e-17,
+        "projectedMintExecutable": true,
+        "detail": "closed-form ratio match: swap 6101213648253385102 token0 for an estimated 18202040801007468 token1"
+      },
+      "realQuoteAmountOut": "18075362913316429",
+      "realQuoteGasEstimateWei": "93438",
+      "projectedAmount0AfterRealSwap": "6101213648253386084",
+      "projectedAmount1AfterRealSwap": "18075362913316429",
+      "projectedStrandedFraction0AfterRealSwap": 0.006959543112552037,
+      "projectedStrandedFraction1AfterRealSwap": 5.532392377379505e-17
+    },
+    "mintLive": {
+      "status": "NOT_ATTEMPTED",
+      "detail": "mint's gas/validity depends on token balances and an NFPM approval that only exist after decreaseLiquidity + collect actually execute -- not simulatable against current pre-decrease wallet state without a state-override eth_call (not attempted this slice)."
+    },
+    "liveGasEstimateWei": "39131000000000",
+    "executable": true,
+    "executableReasons": []
+  },
+  "policy": {
+    "enabled": true,
+    "maxSpendWei": "10000000000000000",
+    "maxSlippageBps": 100,
+    "requireSimulationPass": true,
+    "requireVerifiedOwnership": true,
+    "requireFreshObservation": true,
+    "maxObservationAgeBlocks": 50,
+    "requirePostTxVerification": true
+  },
+  "finalState": "MINT_FAILED",
+  "isFailure": true,
+  "transactions": [
+    {
+      "step": "decreaseLiquidity",
+      "hash": "0xf91b6921d0732f9e15b9f5a0b15d77c8c64718d9f2176e563eaa52502ddc0787",
+      "gasUsed": "183340",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048921"
+    },
+    {
+      "step": "collect",
+      "hash": "0xd3ce45456ca5792f452fe1164416decc170ae44d52f7c9320fdf54791a8b6aad",
+      "gasUsed": "67829",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048925"
+    },
+    {
+      "step": "approve-swaprouter-token0",
+      "hash": "0x44b6e88bcd32875022055321a7dd6fce015b79292d5e45f11f39d5bf1be5ff62",
+      "gasUsed": "29075",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048933"
+    },
+    {
+      "step": "ratio-fix-swap",
+      "hash": "0xd5b977617070ea6dea13dbde0b73742554295ec6c461d7ff94b7f56f9b31b688",
+      "gasUsed": "133420",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048938"
+    },
+    {
+      "step": "approve-token0",
+      "hash": "0x95d02c53807a2be137723dfe6f342e00ff71e645496878cc1b1b21a94700a23d",
+      "gasUsed": "29075",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048942"
+    },
+    {
+      "step": "approve-token1",
+      "hash": "0x16c58b0ef4bf1ad51ac473e3e0596b5725ed78af76ff0057e37f841e7217dcb0",
+      "gasUsed": "46064",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048945"
+    }
+  ],
+  "authorization": {
+    "authorized": true,
+    "reasons": [],
+    "observationAgeBlocks": "0"
+  },
+  "blockTrace": {
+    "observationBlock": "127048908",
+    "planningBlock": "127048908",
+    "simulationBlock": "127048908",
+    "executionStartBlock": "127048908"
+  },
+  "swap": {
+    "swapRequirement": {
+      "direction": "SWAP_TOKEN0_FOR_TOKEN1",
+      "amountIn": "6106591060789783913",
+      "estimatedAmountOut": "18218083491533377",
+      "projectedAmount0AfterSwap": "6106591060789784897",
+      "projectedAmount1AfterSwap": "18218083491533377",
+      "projectedStrandedFraction0": 1.93561348423932e-16,
+      "projectedStrandedFraction1": 5.489051581439603e-17,
+      "projectedMintExecutable": true,
+      "detail": "closed-form ratio match: swap 6106591060789783913 token0 for an estimated 18218083491533377 token1"
+    },
+    "freshQuote": {
+      "amountOut": "18091222668332013",
+      "sqrtPriceX96After": "4308080754748429504989982581",
+      "gasEstimate": "93438"
+    },
+    "amountOutMinimum": "17910310441648692",
+    "mintAmount0": "6106591060789784897",
+    "mintAmount1": "18091222668332013",
+    "postSwapStrandedFraction0": 0.006963456022161961,
+    "postSwapStrandedFraction1": 5.5275423797113583e-17
+  },
+  "generatedAt": "2026-08-25T06:00:22.794Z",
+  "transitions": [
+    {
+      "from": "OBSERVE",
+      "to": "EVALUATE",
+      "timestamp": "2026-08-25T06:00:08.263Z"
+    },
+    {
+      "from": "EVALUATE",
+      "to": "PLAN",
+      "timestamp": "2026-08-25T06:00:08.270Z"
+    },
+    {
+      "from": "PLAN",
+      "to": "SIMULATE",
+      "timestamp": "2026-08-25T06:00:08.273Z"
+    },
+    {
+      "from": "SIMULATE",
+      "to": "DECREASE_PENDING",
+      "timestamp": "2026-08-25T06:00:10.164Z"
+    },
+    {
+      "from": "DECREASE_PENDING",
+      "to": "COLLECT_PENDING",
+      "timestamp": "2026-08-25T06:00:12.173Z"
+    },
+    {
+      "from": "COLLECT_PENDING",
+      "to": "SWAP_PENDING",
+      "timestamp": "2026-08-25T06:00:15.630Z"
+    },
+    {
+      "from": "SWAP_PENDING",
+      "to": "MINT_PENDING",
+      "timestamp": "2026-08-25T06:00:22.595Z"
+    },
+    {
+      "from": "MINT_PENDING",
+      "to": "MINT_FAILED",
+      "timestamp": "2026-08-25T06:00:22.789Z",
+      "reason": "Execution reverted with reason: Price slippage check.\n\nEstimate Gas Arguments:\n  from:   0x9429BE71274b9E5fB56EE7C57C58298FFF720f11\n  to:     0x427bF5b37357632377eCbEC9de3626C71A5396c1\n  value:  0 tBNB\n  data:   0x8831645600000000000000000000000000efbcce2ff935332fc66851cfd34a000f6c7b8d000000000000000000000000ae13d989dac2f0debff460ac112a837c89baa7cd00000000000000000000000000000000000000000000000000000000000009c4ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff18f2ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff20c200000000000000000000000000000000000000000000000054bef83736f37141000000000000000000000000000000000000000000000000004045df04b2cbed00000000000000000000000000000000000000000000000053e60517f1480c48000000000000000000000000000000000000000000000000003fa1551bb102340000000000000000000000009429be71274b9e5fb56ee7c57c58298fff720f11000000000000000000000000000000000000000000000000000000006a8d31ce\n\nDetails: execution reverted: Price slippage check\nVersion: viem@2.55.19"
+    },
+    {
+      "from": "MINT_FAILED",
+      "to": "ARCHIVED",
+      "timestamp": "2026-08-25T06:00:22.794Z"
+    }
+  ],
+  "artifactHash": "beb84adcc29579c897241e66bd93e857d5cb02444a7e14fcd77ca75a701fd803"
+}

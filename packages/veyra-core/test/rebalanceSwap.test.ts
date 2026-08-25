@@ -78,6 +78,39 @@ test("an already-balanced deposit requires no swap and is trivially mint-executa
   assert.equal(result.projectedMintExecutable, true);
 });
 
+// REGRESSION FIXTURE for a real, confirmed bug (found live resuming a blocked mint, this
+// session): holding EXCESS token1 relative to the target range at the current price is the
+// s<0 branch (SWAP_TOKEN1_FOR_TOKEN0) -- the only branch none of the tests above exercised
+// with a realistic "price inside range" case, which is exactly why this went undetected. The
+// old code treated `-s` (a token0-denominated quantity) as a token1 amount and converted it
+// the wrong direction, inflating a real ~0.54 token0 correction into an attempt to spend 0.54
+// token1 -- when only ~0.018 token1 was actually held. Exact real numbers from
+// docs/agent-arena-runs-v2/run-0004.json's swap output (mintAmount0/mintAmount1) and the pool's
+// real post-swap sqrtPriceX96.
+const NEGATIVE_S_SQRT_PRICE_X96 = 4_308_080_754_748_429_504_989_982_581n; // real post-swap price, tick -58240
+const NEGATIVE_S_AMOUNT0 = 6_106_591_060_789_784_897n; // ~6.11 token0 -- fully consumed by the range (0% stranded)
+const NEGATIVE_S_AMOUNT1 = 18_091_222_668_332_013n; // ~0.0181 token1 -- 16.26% of this is excess
+const NEGATIVE_S_TARGET_LOWER = -59150;
+const NEGATIVE_S_TARGET_UPPER = -57150;
+
+test("REGRESSION (real bug, this session): excess token1 relative to the range computes a swap that is actually AFFORDABLE and correctly sized", () => {
+  const result = computeRebalanceSwapRequirement(NEGATIVE_S_AMOUNT0, NEGATIVE_S_AMOUNT1, NEGATIVE_S_TARGET_LOWER, NEGATIVE_S_TARGET_UPPER, NEGATIVE_S_SQRT_PRICE_X96);
+
+  assert.equal(result.direction, "SWAP_TOKEN1_FOR_TOKEN0");
+  // The old, buggy version computed amountIn=540863749913142387 -- MORE than the entire
+  // NEGATIVE_S_AMOUNT1 held (18091222668332013). The bug, stated as an invariant: a
+  // ratio-fixing swap can never need to spend more of a token than is actually held.
+  assert.ok(result.amountIn > 0n && result.amountIn < NEGATIVE_S_AMOUNT1, `amountIn ${result.amountIn} must be less than what's held (${NEGATIVE_S_AMOUNT1}) -- the old bug violated this`);
+  assert.ok(result.estimatedAmountOut > 0n);
+  assert.equal(result.projectedAmount0AfterSwap, NEGATIVE_S_AMOUNT0 + result.estimatedAmountOut);
+  assert.equal(result.projectedAmount1AfterSwap, NEGATIVE_S_AMOUNT1 - result.amountIn);
+  assert.ok(result.projectedAmount1AfterSwap >= 0n, "must never project a negative balance");
+
+  assert.equal(result.projectedMintExecutable, true, `expected the fix to work; got fractions ${result.projectedStrandedFraction0}/${result.projectedStrandedFraction1}`);
+  assert.ok(result.projectedStrandedFraction0 <= 0.01);
+  assert.ok(result.projectedStrandedFraction1 <= 0.01);
+});
+
 test("zero collected amounts on both sides is a degenerate no-op, not a crash", () => {
   const result = computeRebalanceSwapRequirement(0n, 0n, REAL_TARGET_LOWER, REAL_TARGET_UPPER, REAL_SQRT_PRICE_X96);
   assert.equal(result.direction, "NO_SWAP_REQUIRED");

@@ -135,19 +135,31 @@ export function computeRebalanceSwapRequirement(
   }
 
   // Case: price inside the range. Closed-form ratio-matching swap (ignores the swap's own
-  // price impact -- see module doc comment). Derivation kept in the chat record for this
-  // slice; verified independently by this file's tests, not trusted on derivation alone.
+  // price impact -- see module doc comment).
   //
   // r = unit1/unit0 (the amount1:amount0 ratio the range wants, independent of liquidity size)
   // P = priceNum/Q192 (current price, token1 per token0)
-  // s = (a0*r - a1) / (P + r)  -- signed amount of token0 to swap into token1; negative means
-  //                                swap token1 into token0 instead.
+  //
+  // s is the signed change in a0 -- s>0 means a0 DECREASES by s (selling s token0 for s*P
+  // token1); s<0 means a0 INCREASES by -s (buying -s token0, spending (-s)*P token1). Both
+  // cases fold into one identity, a1' = a1 - s*P with a0' = a0 - s, which is why a single
+  // formula solves both directions:
+  //   a1 - s*P = r*(a0 - s)  =>  s = (r*a0 - a1) / (r - P)
+  //
+  // BUG FOUND LIVE (this session, resuming a real blocked mint): the previous version derived
+  // this correctly for s>0, but for s<0 treated `-s` as a TOKEN1 amount and converted it via
+  // *Q192/priceNum -- backwards. `-s` is the token0 amount RECEIVED (no conversion needed); the
+  // token1 SPENT is `-s` scaled by price, i.e. `(-s)*priceNum/Q192`. The old code was off by a
+  // factor of 1/P (~338x in the real case that caught it: it tried to spend 0.54 token1 when
+  // only 0.018 was held). See rebalanceSwap.test.ts's regression test, built from that exact
+  // real on-chain scenario (docs/agent-arena-runs-v2/run-0004.json).
   const priceNum = currentSqrtPriceX96 * currentSqrtPriceX96;
   const numerator = (collectedAmount0 * unit1 - collectedAmount1 * unit0) * Q192;
   const denominator = priceNum * unit0 + unit1 * Q192;
   const s = numerator / denominator; // BigInt division truncates toward zero -- fine, sign is preserved
 
   if (s > DUST_THRESHOLD_WEI) {
+    // Selling s token0 for s*P token1.
     const estimatedOut = (s * priceNum) / Q192;
     return buildResult(
       "SWAP_TOKEN0_FOR_TOKEN1",
@@ -162,18 +174,19 @@ export function computeRebalanceSwapRequirement(
     );
   }
   if (s < -DUST_THRESHOLD_WEI) {
-    const amountIn = -s; // token1 to swap
-    const estimatedOut = (amountIn * Q192) / priceNum;
+    // Buying (-s) token0, spending (-s)*P token1 -- see the corrected derivation above.
+    const amount0Out = -s;
+    const amountIn = (amount0Out * priceNum) / Q192;
     return buildResult(
       "SWAP_TOKEN1_FOR_TOKEN0",
       amountIn,
-      estimatedOut,
-      collectedAmount0 + estimatedOut,
+      amount0Out,
+      collectedAmount0 + amount0Out,
       collectedAmount1 - amountIn,
       targetTickLower,
       targetTickUpper,
       currentSqrtPriceX96,
-      `closed-form ratio match: swap ${amountIn} token1 for an estimated ${estimatedOut} token0`,
+      `closed-form ratio match: swap ${amountIn} token1 for an estimated ${amount0Out} token0`,
     );
   }
   return buildResult(

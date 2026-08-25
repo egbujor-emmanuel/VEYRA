@@ -47,13 +47,14 @@ async function main() {
   const { EVMWalletProvider } = await import("@bnbagent/sdk");
   const wallet = new EVMWalletProvider({ password: readWalletPassword(), address: VEYRA_WALLET, walletsDir: KEYSTORE_DIR, persist: true });
 
-  console.log("Running the Agent Arena Loop against live BSC testnet state...\n");
+  console.log("Running the Agent Arena Loop (v2, market-aware evaluator) against live BSC testnet state...\n");
   const result = await runAgentArenaLoop({
     client,
     wallet,
     positionTokenId: VEYRA_POSITION_TOKEN_ID,
     ownerWallet: VEYRA_WALLET,
     docsDir: DOCS_DIR,
+    evaluatorVersion: "v2",
   });
 
   console.log(`Arena round: #${result.roundId}`);

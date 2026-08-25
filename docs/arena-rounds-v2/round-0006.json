@@ -1,14 +1,14 @@
 {
-  "roundId": 7,
-  "artifactHash": "854464387aa14cf6d52f3ecee1c61396b19d5a291cbc45f393bdac5c2f13c3a5",
+  "roundId": 6,
+  "artifactHash": "39c1c00f6ae9a50fa30d7eae519cc7ce1f335fa5aee553cce0a93a462b2a0a4e",
   "evaluatorPolicy": "v2-market-aware",
   "veyraAgentId": 1890,
   "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
   "positionTokenId": "37059",
-  "observedAtBlock": "127048908",
+  "observedAtBlock": "126986914",
   "observed": {
     "positionTokenId": "37059",
-    "blockNumber": "127048908",
+    "blockNumber": "126986914",
     "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
     "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
     "fee": 2500,
@@ -20,7 +20,7 @@
     "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
     "sqrtPriceX96": "4327444522482208127659911293",
     "currentTick": -58150,
-    "poolLiquidity": "74021458496840403966"
+    "poolLiquidity": "36490546829374323011"
   },
   "marketSnapshot": {
     "currentTick": -58150,
@@ -34,8 +34,8 @@
     "recentVolatilityBpsProvenance": "SUPPLIED_NOT_OBSERVED"
   },
   "job": {
-    "jobId": "agent-arena-loop-b9e77995-8cb6-4817-a6da-2a734e62a0e0",
-    "createdAt": "2026-08-25T06:00:08.265Z",
+    "jobId": "agent-arena-loop-13d4de63-685a-40cb-bff7-a37ac4b6d2de",
+    "createdAt": "2026-08-24T22:15:10.026Z",
     "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
     "category": "rebalance",
     "target": {
@@ -170,7 +170,7 @@
   ],
   "winnerCandidateId": "rangekeeper-v1",
   "executionPlan": {
-    "jobId": "agent-arena-loop-b9e77995-8cb6-4817-a6da-2a734e62a0e0",
+    "jobId": "agent-arena-loop-13d4de63-685a-40cb-bff7-a37ac4b6d2de",
     "candidateId": "rangekeeper-v1",
     "positionTokenId": 37059,
     "network": "bsc-testnet",
@@ -195,7 +195,7 @@
         "liquidity": "7039210414078688290",
         "amount0Min": "12080403023541703474",
         "amount1Min": "0",
-        "deadline": 1787638208,
+        "deadline": 1787610310,
         "estimatedGasWei": "1000000000000000"
       },
       {
@@ -220,7 +220,7 @@
         "amount0Min": "12080403023541703474",
         "amount1Min": "0",
         "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
-        "deadline": 1787638208,
+        "deadline": 1787610310,
         "estimatedGasWei": "1000000000000000"
       }
     ],
@@ -230,7 +230,7 @@
     "status": "EXECUTION_NOT_SENT"
   },
   "simulation": {
-    "jobId": "agent-arena-loop-b9e77995-8cb6-4817-a6da-2a734e62a0e0",
+    "jobId": "agent-arena-loop-13d4de63-685a-40cb-bff7-a37ac4b6d2de",
     "candidateId": "rangekeeper-v1",
     "positionTokenId": 37059,
     "action": "REBALANCE",
@@ -279,8 +279,8 @@
       "gasEstimateWei": "17529100000000"
     },
     "ratioFixLive": {
-      "status": "VALID",
-      "detail": "real quote (18075362913316429 out for 6101213648253385102 in) projects clearing the ratio-mismatch threshold",
+      "status": "INVALID",
+      "detail": "even with a real quote, the projected post-swap ratio still strands ~1.2%/0.0% (token0/token1) -- refusing rather than minting anyway",
       "swapRequirement": {
         "direction": "SWAP_TOKEN0_FOR_TOKEN1",
         "amountIn": "6101213648253385102",
@@ -292,20 +292,22 @@
         "projectedMintExecutable": true,
         "detail": "closed-form ratio match: swap 6101213648253385102 token0 for an estimated 18202040801007468 token1"
       },
-      "realQuoteAmountOut": "18075362913316429",
-      "realQuoteGasEstimateWei": "93438",
+      "realQuoteAmountOut": "17992629518998341",
+      "realQuoteGasEstimateWei": "93488",
       "projectedAmount0AfterRealSwap": "6101213648253386084",
-      "projectedAmount1AfterRealSwap": "18075362913316429",
-      "projectedStrandedFraction0AfterRealSwap": 0.006959543112552037,
-      "projectedStrandedFraction1AfterRealSwap": 5.532392377379505e-17
+      "projectedAmount1AfterRealSwap": "17992629518998341",
+      "projectedStrandedFraction0AfterRealSwap": 0.011504824338023675,
+      "projectedStrandedFraction1AfterRealSwap": 5.557831327233767e-17
     },
     "mintLive": {
       "status": "NOT_ATTEMPTED",
       "detail": "mint's gas/validity depends on token balances and an NFPM approval that only exist after decreaseLiquidity + collect actually execute -- not simulatable against current pre-decrease wallet state without a state-override eth_call (not attempted this slice)."
     },
     "liveGasEstimateWei": "39131000000000",
-    "executable": true,
-    "executableReasons": []
+    "executable": false,
+    "executableReasons": [
+      "ratio-fixing swap check failed: even with a real quote, the projected post-swap ratio still strands ~1.2%/0.0% (token0/token1) -- refusing rather than minting anyway"
+    ]
   },
-  "generatedAt": "2026-08-25T06:00:09.645Z"
+  "generatedAt": "2026-08-24T22:15:10.888Z"
 }

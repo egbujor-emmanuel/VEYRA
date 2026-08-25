@@ -1,0 +1,164 @@
+{
+  "artifactHash": "e87cfe959f954c5643a3b9f40afea254affae05b0ddb9c89c6ec64af8abc1fc7",
+  "kind": "AGENT_ARENA_LOOP_RESUMED_MINT",
+  "label": "Resume-and-complete run-0004 (v2 evaluator, RangeKeeper winner) after a stale-price ratio-check bug fix. Real, controlled -- not autonomous.",
+  "generatedAt": "2026-08-25T14:49:32.854Z",
+  "network": "bsc-testnet",
+  "predecessorRunArchiveId": 4,
+  "predecessorArtifactHash": "beb84adcc29579c897241e66bd93e857d5cb02444a7e14fcd77ca75a701fd803",
+  "rootCause": "orchestrator.ts's post-swap ratio-mismatch re-check reused `freshSlot0`, a price read BEFORE the swap executed. A swap moves price by definition -- checking the post-swap ratio against a pre-swap price checked the wrong price entirely, so the 0.7% stranded-fraction result it produced did not reflect what mint() would actually see. Fixed by reading slot0 again after the swap's receipt confirms, before any further ratio math. This script additionally re-verified against a THIRD, brand-new price read (taken now, further after the original failure) before proceeding.",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "winningProposal": {
+    "candidateId": "rangekeeper-v1",
+    "displayLabel": "Our Agent",
+    "agentIdOnChain": 1890,
+    "proposedAction": {
+      "kind": "rebalance",
+      "newRange": {
+        "tickLower": -59150,
+        "tickUpper": -57150
+      }
+    },
+    "rationale": "Centered a 2000-tick-wide range on the current tick, widened for recent volatility of 0 bps (risk tolerance: medium)."
+  },
+  "correctiveSwaps": [
+    {
+      "attempt": 2,
+      "swapRequirement": {
+        "direction": "SWAP_TOKEN0_FOR_TOKEN1",
+        "amountIn": "48934185640949034",
+        "estimatedAmountOut": "144798826061730",
+        "projectedAmount0AfterSwap": "6596954730470338365",
+        "projectedAmount1AfterSwap": "16636845070685205",
+        "projectedStrandedFraction0": 1.5097875318131658e-16,
+        "projectedStrandedFraction1": 6.010755018462248e-17,
+        "projectedMintExecutable": true,
+        "detail": "closed-form ratio match: swap 48934185640949034 token0 for an estimated 144798826061730 token1"
+      },
+      "quote": {
+        "amountOut": "144431648083137",
+        "sqrtPriceX96After": "4309633547793988935762660553",
+        "gasEstimate": "93499"
+      },
+      "amountOutMinimum": "142987331602305",
+      "approveTx": {
+        "step": "approve-swaprouter-corrective-token0",
+        "hash": "0x5fb955ab34143139278973b7f2eb70308c9adc3d04e9d4516b21343f53eb4165",
+        "gasUsed": "46163",
+        "gasPriceWei": "100000000",
+        "status": "success",
+        "blockNumber": "127119469"
+      },
+      "swapTx": {
+        "step": "corrective-ratio-fix-swap",
+        "hash": "0xc11cabb40abbad55c6cba899244549455232e3406a5eef0b04ac63cc2f186cfd",
+        "gasUsed": "116357",
+        "gasPriceWei": "100000000",
+        "status": "success",
+        "blockNumber": "127119477"
+      },
+      "postSwapMintAmount0": "6596954730470338365",
+      "postSwapMintAmount1": "16636477892706612",
+      "postSwapStrandedFraction0": 1.5158509355553872e-19,
+      "postSwapStrandedFraction1": 0.0014576680386321637
+    }
+  ],
+  "finalStrandedFractionBeforeMint": {
+    "token0": 1.5158509355553872e-19,
+    "token1": 0.0014576680386321637
+  },
+  "mintArgs": {
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "fee": 2500,
+    "tickLower": -59150,
+    "tickUpper": -57150,
+    "amount0Desired": "6596954730470338365",
+    "amount1Desired": "16636477892706612",
+    "amount0Min": "6530985183165634981",
+    "amount1Min": "16470113113779545",
+    "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+    "deadline": "1787669962"
+  },
+  "reusedFromPredecessor": {
+    "decreaseLiquidityTx": {
+      "step": "decreaseLiquidity",
+      "hash": "0xf91b6921d0732f9e15b9f5a0b15d77c8c64718d9f2176e563eaa52502ddc0787",
+      "gasUsed": "183340",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048921"
+    },
+    "collectTx": {
+      "step": "collect",
+      "hash": "0xd3ce45456ca5792f452fe1164416decc170ae44d52f7c9320fdf54791a8b6aad",
+      "gasUsed": "67829",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048925"
+    },
+    "approveSwapRouterTx": {
+      "step": "approve-swaprouter-token0",
+      "hash": "0x44b6e88bcd32875022055321a7dd6fce015b79292d5e45f11f39d5bf1be5ff62",
+      "gasUsed": "29075",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048933"
+    },
+    "swapTx": {
+      "step": "ratio-fix-swap",
+      "hash": "0xd5b977617070ea6dea13dbde0b73742554295ec6c461d7ff94b7f56f9b31b688",
+      "gasUsed": "133420",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048938"
+    },
+    "approveToken0Tx": {
+      "step": "approve-token0",
+      "hash": "0x95d02c53807a2be137723dfe6f342e00ff71e645496878cc1b1b21a94700a23d",
+      "gasUsed": "29075",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048942"
+    },
+    "approveToken1Tx": {
+      "step": "approve-token1",
+      "hash": "0x16c58b0ef4bf1ad51ac473e3e0596b5725ed78af76ff0057e37f841e7217dcb0",
+      "gasUsed": "46064",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127048945"
+    }
+  },
+  "mintTx": {
+    "step": "mint",
+    "hash": "0xc943b90944fdc812fb4c7aa55dd750ace2ed95a9b1e1abac9bebc23d4cb9d07f",
+    "gasUsed": "420050",
+    "gasPriceWei": "100000000",
+    "status": "success",
+    "blockNumber": "127119497"
+  },
+  "oldPosition": {
+    "tokenId": "37059"
+  },
+  "newPosition": {
+    "tokenId": "37079",
+    "positionTokenId": "37079",
+    "blockNumber": "127119497",
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "fee": 2500,
+    "tickLower": -59150,
+    "tickUpper": -57150,
+    "positionLiquidity": "6811320819996921967",
+    "token0Decimals": 18,
+    "token1Decimals": 18,
+    "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "sqrtPriceX96": "4309633547793988935762660553",
+    "currentTick": -58233,
+    "poolLiquidity": "80832779316837325933"
+  },
+  "verified": true,
+  "status": "EXECUTED"
+}
