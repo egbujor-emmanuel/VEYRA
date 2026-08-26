@@ -3,8 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/src/index.d.ts", "default": "./dist/src/index.js" },
+    "./positionReader": { "types": "./dist/src/positionReader.d.ts", "default": "./dist/src/positionReader.js" },
+    "./simulate": { "types": "./dist/src/simulate.d.ts", "default": "./dist/src/simulate.js" },
+    "./rebalanceQuote": { "types": "./dist/src/rebalanceQuote.d.ts", "default": "./dist/src/rebalanceQuote.js" },
+    "./testnetAddresses": { "types": "./dist/src/testnetAddresses.d.ts", "default": "./dist/src/testnetAddresses.js" },
+    "./abis": { "types": "./dist/src/abis.d.ts", "default": "./dist/src/abis.js" }
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "tsc -p tsconfig.json && node --test dist/test/positionReader.test.js",
