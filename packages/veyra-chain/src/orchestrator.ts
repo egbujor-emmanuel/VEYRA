@@ -13,21 +13,16 @@
 import { writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { createHash, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
-import { encodeFunctionData, decodeEventLog, type PublicClient, type Address } from "viem";
+import type { PublicClient, Address } from "viem";
 import {
   evaluate,
   evaluateV2,
   planExecution,
-  computeCollectedAmounts,
   createRun,
   transition,
   isFailure,
   authorizeExecution,
   DEFAULT_EXECUTION_POLICY,
-  computeRebalanceSwapRequirement,
-  getLiquidityForAmounts,
-  getAmountsForLiquidity,
-  RATIO_MISMATCH_THRESHOLD,
   rangeKeeperStrategy,
   baselineHoldStrategy,
   baselineSymmetricRangeStrategy,
@@ -35,14 +30,13 @@ import {
   type JobSpec,
   type CurrentPositionState,
   type RunRecord,
-  type RunState,
   type ExecutionPolicy,
 } from "@veyra/core";
 import { readPositionObservation, toMarketSnapshot } from "./positionReader.js";
 import { simulateLive } from "./simulate.js";
-import { getLiveSwapQuote } from "./rebalanceQuote.js";
+import { executeRebalanceForPosition } from "./rebalanceExecutor.js";
 import { createSigner, type SigningWallet, type TxRecord } from "./txSigner.js";
-import { NFPM_ABI, ERC20_ABI, POOL_ABI, SWAP_ROUTER_ABI } from "./abis.js";
+import { NFPM_ABI } from "./abis.js";
 import { PANCAKE_V3_TESTNET } from "./testnetAddresses.js";
 
 const NFPM_ADDRESS = PANCAKE_V3_TESTNET.nonfungiblePositionManager as Address;
@@ -241,210 +235,25 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
     }
 
     // --- Real execution path: DECREASE -> VERIFY -> COLLECT -> VERIFY -> MINT -> VERIFY ---
+    // Extracted (Day 3 of the four-category expansion) into rebalanceExecutor.ts, unchanged in
+    // behavior, so Grid Trading's per-slot rebalances reuse this exact same proven logic instead
+    // of a second, independently-reviewed copy of money-moving code. Verified byte-identical
+    // against this project's own chain test suite before anything new was built on it.
     const signer = createSigner(opts.client, opts.wallet, chainId);
-    const [baselineBalance0, baselineBalance1] = await Promise.all([
-      opts.client.readContract({ address: observation.token0, abi: ERC20_ABI, functionName: "balanceOf", args: [opts.ownerWallet] }),
-      opts.client.readContract({ address: observation.token1, abi: ERC20_ABI, functionName: "balanceOf", args: [opts.ownerWallet] }),
-    ]);
-
-    run = transition(run, "DECREASE_PENDING");
-    try {
-      const decreaseStep = plan.steps.find((s) => s.kind === "decreaseLiquidity")!;
-      const data = encodeFunctionData({
-        abi: NFPM_ABI,
-        functionName: "decreaseLiquidity",
-        args: [{ tokenId: BigInt(decreaseStep.tokenId), liquidity: decreaseStep.liquidity, amount0Min: decreaseStep.amount0Min, amount1Min: decreaseStep.amount1Min, deadline: BigInt(decreaseStep.deadline) }],
-      });
-      txRecords.push(await signer.sendAndWait("decreaseLiquidity", NFPM_ADDRESS, data));
-
-      const postDecrease = await opts.client.readContract({ address: NFPM_ADDRESS, abi: NFPM_ABI, functionName: "positions", args: [opts.positionTokenId] });
-      if (postDecrease[7] !== 0n) throw new Error(`post-decrease liquidity is ${postDecrease[7]}, expected 0`);
-
-      run = transition(run, "COLLECT_PENDING");
-      const collectStep = plan.steps.find((s) => s.kind === "collect")!;
-      const collectData = encodeFunctionData({
-        abi: NFPM_ABI,
-        functionName: "collect",
-        args: [{ tokenId: BigInt(collectStep.tokenId), recipient: collectStep.recipient as Address, amount0Max: collectStep.amount0Max, amount1Max: collectStep.amount1Max }],
-      });
-      txRecords.push(await signer.sendAndWait("collect", NFPM_ADDRESS, collectData));
-
-      const [postCollectBalance0, postCollectBalance1] = await Promise.all([
-        opts.client.readContract({ address: observation.token0, abi: ERC20_ABI, functionName: "balanceOf", args: [opts.ownerWallet] }),
-        opts.client.readContract({ address: observation.token1, abi: ERC20_ABI, functionName: "balanceOf", args: [opts.ownerWallet] }),
-      ]);
-      // The hard invariant from Slice 3's incident: DELTA against a baseline, never an
-      // absolute balance. See accounting.ts.
-      const { collectedAmount0, collectedAmount1 } = computeCollectedAmounts({ baselineBalance0, baselineBalance1, postCollectBalance0, postCollectBalance1 });
-
-      // --- DETERMINE BALANCE DELTA -> SWAP EXCESS TOKEN (only if the ACTUAL collected amounts,
-      // not the pre-execution estimate, still need it) ---
-      // Recomputed fresh against the REAL collected amounts -- plan.expectedAmounts was a
-      // pre-decrease estimate; fee accrual/rounding means the real amounts can differ slightly,
-      // and it's the real amounts that must actually fund the mint.
-      const freshSlot0 = await opts.client.readContract({ address: observation.poolAddress, abi: POOL_ABI, functionName: "slot0" });
-      const swapRequirement = computeRebalanceSwapRequirement(collectedAmount0, collectedAmount1, plan.targetRange.tickLower, plan.targetRange.tickUpper, freshSlot0[0]);
-
-      // mintAmount0/1 always end up as a DELTA against baselineBalance0/1 (the SAME pre-
-      // decrease baseline the collectedAmount0/1 hard invariant already uses) -- never an
-      // absolute balance read, and never a second, incompatible use of computeCollectedAmounts
-      // (which asserts BOTH deltas are non-negative; a swap makes exactly one of them negative
-      // by design, so it must not be reused here).
-      let mintAmount0 = collectedAmount0;
-      let mintAmount1 = collectedAmount1;
-      let swapDetail: Record<string, unknown> = { swapRequirement: bigintsToStrings(swapRequirement) };
-
-      if (swapRequirement.direction !== "NO_SWAP_REQUIRED") {
-        run = transition(run, "SWAP_PENDING");
-        const [tokenIn, tokenOut] = swapRequirement.direction === "SWAP_TOKEN0_FOR_TOKEN1" ? [observation.token0, observation.token1] : [observation.token1, observation.token0];
-
-        const freshQuote = await getLiveSwapQuote({ client: opts.client, tokenIn, tokenOut, fee: observation.fee, amountIn: swapRequirement.amountIn });
-        const maxSlippageBps = job.constraints.maxSlippageBps;
-        const amountOutMinimum = (freshQuote.amountOut * BigInt(10_000 - maxSlippageBps)) / 10_000n;
-
-        // Approve EXACTLY the swap input -- never the full collected balance.
-        const approveSwapData = encodeFunctionData({ abi: ERC20_ABI, functionName: "approve", args: [SWAP_ROUTER, swapRequirement.amountIn] });
-        txRecords.push(await signer.sendAndWait(`approve-swaprouter-${swapRequirement.direction === "SWAP_TOKEN0_FOR_TOKEN1" ? "token0" : "token1"}`, tokenIn, approveSwapData));
-
-        const swapDeadline = BigInt(Math.floor(Date.now() / 1000) + job.constraints.deadlineSeconds);
-        const swapData = encodeFunctionData({
-          abi: SWAP_ROUTER_ABI,
-          functionName: "exactInputSingle",
-          args: [{ tokenIn, tokenOut, fee: observation.fee, recipient: opts.ownerWallet, deadline: swapDeadline, amountIn: swapRequirement.amountIn, amountOutMinimum, sqrtPriceLimitX96: 0n }],
-        });
-
-        // Any throw here (including a reverted swap tx) propagates to the single outer
-        // catch below, which maps the run's CURRENT state (still SWAP_PENDING) to SWAP_FAILED
-        // and transitions exactly once -- see failureFor there. Do not transition here too.
-        txRecords.push(await signer.sendAndWait("ratio-fix-swap", SWAP_ROUTER, swapData));
-
-        const [postSwapBalance0, postSwapBalance1] = await Promise.all([
-          opts.client.readContract({ address: observation.token0, abi: ERC20_ABI, functionName: "balanceOf", args: [opts.ownerWallet] }),
-          opts.client.readContract({ address: observation.token1, abi: ERC20_ABI, functionName: "balanceOf", args: [opts.ownerWallet] }),
-        ]);
-        // Both against the ORIGINAL pre-decrease baseline -- this correctly isolates "how much
-        // of token0/token1 belongs to this whole operation right now," through decrease,
-        // collect, AND the swap, in one delta each. A swap legitimately moves one side down and
-        // the other up, so neither delta is asserted non-negative here (unlike collectedAmount0/1).
-        mintAmount0 = postSwapBalance0 - baselineBalance0;
-        mintAmount1 = postSwapBalance1 - baselineBalance1;
-
-        // ROOT-CAUSE FIX: a swap MOVES the pool's price -- validating the post-swap ratio (or
-        // computing mint's amountMin floor) against `freshSlot0`, which was read BEFORE the swap,
-        // checks the wrong price entirely. Found live: run-0004 computed a 0.7% stranded fraction
-        // against the pre-swap price and proceeded to MINT_PENDING; the real on-chain price (after
-        // the swap actually moved it) made the real achievable consumption worse, and mint()'s own
-        // slippage floor correctly reverted with "Price slippage check". Re-read slot0 HERE, after
-        // the swap's receipt is already confirmed, so every calculation from this point on (the
-        // ratio re-check immediately below, AND the mint amountMin floor further down) uses the
-        // price the mint() call will actually execute against.
-        const postSwapSlot0 = await opts.client.readContract({ address: observation.poolAddress, abi: POOL_ABI, functionName: "slot0" });
-
-        // Refuse to mint if the ACTUAL resulting ratio (not the projection) is still outside tolerance.
-        const achievableLiquidity = getLiquidityForAmounts(postSwapSlot0[0], plan.targetRange.tickLower, plan.targetRange.tickUpper, mintAmount0, mintAmount1);
-        const consumed = getAmountsForLiquidity(postSwapSlot0[0], plan.targetRange.tickLower, plan.targetRange.tickUpper, achievableLiquidity);
-        const strandedFraction0 = mintAmount0 === 0n ? 0 : Number(mintAmount0 - consumed.amount0) / Number(mintAmount0);
-        const strandedFraction1 = mintAmount1 === 0n ? 0 : Number(mintAmount1 - consumed.amount1) / Number(mintAmount1);
-        if (strandedFraction0 > RATIO_MISMATCH_THRESHOLD || strandedFraction1 > RATIO_MISMATCH_THRESHOLD) {
-          // Propagates to the single outer catch, same as above -- not transitioned here.
-          throw new Error(
-            `post-swap ratio still outside tolerance: stranded fractions ${strandedFraction0.toFixed(4)}/${strandedFraction1.toFixed(4)} exceed ${RATIO_MISMATCH_THRESHOLD} -- refusing to mint`,
-          );
-        }
-
-        swapDetail = {
-          swapRequirement: bigintsToStrings(swapRequirement),
-          freshQuote: bigintsToStrings(freshQuote),
-          amountOutMinimum: amountOutMinimum.toString(),
-          mintAmount0: mintAmount0.toString(),
-          mintAmount1: mintAmount1.toString(),
-          postSwapStrandedFraction0: strandedFraction0,
-          postSwapStrandedFraction1: strandedFraction1,
-        };
-      }
-      verificationDetail = { ...verificationDetail, swap: swapDetail };
-
-      if (mintAmount0 > 0n) {
-        const approveData = encodeFunctionData({ abi: ERC20_ABI, functionName: "approve", args: [NFPM_ADDRESS, mintAmount0] });
-        txRecords.push(await signer.sendAndWait("approve-token0", observation.token0, approveData));
-      }
-      if (mintAmount1 > 0n) {
-        const approveData = encodeFunctionData({ abi: ERC20_ABI, functionName: "approve", args: [NFPM_ADDRESS, mintAmount1] });
-        txRecords.push(await signer.sendAndWait("approve-token1", observation.token1, approveData));
-      }
-
-      run = transition(run, "MINT_PENDING");
-      const maxSlippageBps = job.constraints.maxSlippageBps;
-      const amount0Min = (mintAmount0 * BigInt(10_000 - maxSlippageBps)) / 10_000n;
-      const amount1Min = (mintAmount1 * BigInt(10_000 - maxSlippageBps)) / 10_000n;
-      const deadline = Math.floor(Date.now() / 1000) + job.constraints.deadlineSeconds;
-      const mintArgs = {
-        token0: observation.token0,
-        token1: observation.token1,
-        fee: observation.fee,
-        tickLower: plan.targetRange.tickLower,
-        tickUpper: plan.targetRange.tickUpper,
-        amount0Desired: mintAmount0,
-        amount1Desired: mintAmount1,
-        amount0Min,
-        amount1Min,
-        recipient: opts.ownerWallet,
-        deadline: BigInt(deadline),
-      };
-      const mintData = encodeFunctionData({ abi: NFPM_ABI, functionName: "mint", args: [mintArgs] });
-      const mintTxRecord = await signer.sendAndWait("mint", NFPM_ADDRESS, mintData);
-      txRecords.push(mintTxRecord);
-
-      run = transition(run, "VERIFYING");
-      const mintReceipt = await opts.client.getTransactionReceipt({ hash: mintTxRecord.hash });
-      let newTokenId: bigint | null = null;
-      for (const log of mintReceipt.logs) {
-        try {
-          const decoded = decodeEventLog({ abi: NFPM_ABI, data: log.data, topics: log.topics });
-          if (decoded.eventName === "IncreaseLiquidity" && log.address.toLowerCase() === NFPM_ADDRESS.toLowerCase()) {
-            newTokenId = (decoded.args as { tokenId: bigint }).tokenId;
-            break;
-          }
-        } catch {
-          // non-NFPM logs don't decode against NFPM_ABI -- expected, skip
-        }
-      }
-      if (newTokenId === null) throw new Error("mint succeeded but no IncreaseLiquidity event was found");
-
-      const newPositionObservation = await readPositionObservation(opts.client, newTokenId);
-      const newOwner = await opts.client.readContract({ address: NFPM_ADDRESS, abi: NFPM_ABI, functionName: "ownerOf", args: [newTokenId] });
-      const verified =
-        newOwner.toLowerCase() === opts.ownerWallet.toLowerCase() &&
-        newPositionObservation.tickLower === plan.targetRange.tickLower &&
-        newPositionObservation.tickUpper === plan.targetRange.tickUpper &&
-        newPositionObservation.fee === observation.fee &&
-        newPositionObservation.token0.toLowerCase() === observation.token0.toLowerCase() &&
-        newPositionObservation.token1.toLowerCase() === observation.token1.toLowerCase() &&
-        newPositionObservation.positionLiquidity > 0n;
-
-      newPositionTokenId = newTokenId.toString();
-      verificationDetail = {
-        ...verificationDetail,
-        newPosition: { tokenId: newTokenId.toString(), ...(bigintsToStrings(newPositionObservation) as Record<string, unknown>) },
-        collectedAmount0: collectedAmount0.toString(),
-        collectedAmount1: collectedAmount1.toString(),
-        verified,
-      };
-
-      if (!verified) throw new Error("post-mint verification FAILED -- new position parameters do not match the plan");
-      run = transition(run, "EXECUTED");
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      const failureFor: Record<string, RunState> = {
-        DECREASE_PENDING: "DECREASE_FAILED",
-        COLLECT_PENDING: "COLLECT_FAILED",
-        SWAP_PENDING: "SWAP_FAILED",
-        MINT_PENDING: "MINT_FAILED",
-        VERIFYING: "VERIFICATION_FAILED",
-      };
-      const failState = failureFor[run.currentState] ?? "MINT_FAILED";
-      run = transition(run, failState, reason);
-    }
+    const execResult = await executeRebalanceForPosition({
+      client: opts.client,
+      signer,
+      job,
+      plan,
+      positionTokenId: opts.positionTokenId,
+      observation,
+      ownerWallet: opts.ownerWallet,
+      run,
+    });
+    run = execResult.run;
+    txRecords.push(...execResult.txRecords);
+    newPositionTokenId = execResult.newPositionTokenId?.toString() ?? null;
+    verificationDetail = { ...verificationDetail, ...execResult.detail };
   }
 
   // --- ARCHIVE: always, regardless of outcome ---

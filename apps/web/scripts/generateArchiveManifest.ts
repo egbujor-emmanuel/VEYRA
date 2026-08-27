@@ -12,6 +12,14 @@
 // (docs/agent-arena-runs/), never docs/executions/, docs/test-b/, or
 // docs/test-infrastructure/ (the ambient-liquidity test position). This is req 7's exclusion
 // rule enforced structurally, not by a runtime filter someone could widen later.
+//
+// Four-category expansion (additive): also summarizes Grid Trading / Yield Optimisation /
+// Health Factor Monitoring's own archive directories (docs/grid-rounds, docs/grid-runs,
+// docs/yield-rounds, docs/health-factor-rounds) into a NEW top-level `categories` key. The
+// original manifest shape (totalRuns/executedJobs/entries/arenaRoundIds/etc.) is completely
+// unchanged -- every existing page keeps reading exactly what it already reads. Each new
+// category's directory is read only if it exists, so a fresh clone without any grid/yield/health
+// runs yet still builds cleanly with a zero-count summary, not a crash.
 
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, copyFileSync, existsSync } from "node:fs";
 import { resolve, dirname } from "node:path";
@@ -44,6 +52,73 @@ interface AmendmentRun {
 
 function isAmendment(record: unknown): record is AmendmentRun {
   return typeof record === "object" && record !== null && "predecessorRunArchiveId" in record;
+}
+
+interface CategorySummary {
+  category: string;
+  roundCount: number;
+  runCount: number;
+  executedRunCount: number; // only meaningful for categories that ever execute (grid-trading); 0 for recommendation-only categories
+  recommendMigrateOrRepayCount: number; // rounds whose winner proposed migrate/repay, whether or not it was ever executed
+  holdCount: number;
+}
+
+/** Reads one new category's archive directories, if they exist. Never throws on a missing directory -- a category with no runs yet is a real, honest zero, not a build failure. */
+function summarizeCategory(category: string, roundsDirName: string, runsDirName?: string): CategorySummary {
+  const roundsDir = resolve(DOCS_DIR, roundsDirName);
+  const publicRoundsDir = resolve(APP_ROOT, "public/data", roundsDirName);
+  let roundCount = 0;
+  let recommendMigrateOrRepayCount = 0;
+  let holdCount = 0;
+
+  if (existsSync(roundsDir)) {
+    mkdirSync(publicRoundsDir, { recursive: true });
+    const files = readdirSync(roundsDir).filter((f) => f.endsWith(".json")).sort();
+    roundCount = files.length;
+    for (const file of files) {
+      copyFileSync(resolve(roundsDir, file), resolve(publicRoundsDir, file));
+      const round = JSON.parse(readFileSync(resolve(roundsDir, file), "utf-8"));
+      const kind = round.winningProposal?.proposedAction?.kind;
+      if (kind === "hold") holdCount++;
+      else if (kind === "recommend-migrate" || kind === "recommend-repay" || kind === "recommend-add-collateral") recommendMigrateOrRepayCount++;
+    }
+  }
+
+  let runCount = 0;
+  let executedRunCount = 0;
+  if (runsDirName) {
+    const runsDir = resolve(DOCS_DIR, runsDirName);
+    const publicRunsDir = resolve(APP_ROOT, "public/data", runsDirName);
+    if (existsSync(runsDir)) {
+      mkdirSync(publicRunsDir, { recursive: true });
+      const files = readdirSync(runsDir).filter((f) => f.endsWith(".json")).sort();
+      runCount = files.length;
+      // Same amendment discipline as the main rebalance category (see isAmendment()/nextRunArchiveId
+      // above): a "-resumed-mint"-style completion record has `predecessorRunArchiveId` and a
+      // top-level `status`, not the primary run's `slotOutcomes` array. A predecessor + its
+      // resumed completion count as ONE effective executed run, not two, and not zero. Two clean
+      // passes -- collect everything first, then decide -- so file iteration order never matters.
+      const primaries: Array<{ runArchiveId?: number; slotOutcomes: Array<{ finalState?: string }> }> = [];
+      const amendments: Array<{ predecessorRunArchiveId: number; status: string }> = [];
+      for (const file of files) {
+        copyFileSync(resolve(runsDir, file), resolve(publicRunsDir, file));
+        const run = JSON.parse(readFileSync(resolve(runsDir, file), "utf-8"));
+        if (typeof run.predecessorRunArchiveId === "number") {
+          amendments.push({ predecessorRunArchiveId: run.predecessorRunArchiveId, status: run.status });
+        } else {
+          primaries.push({ runArchiveId: run.runArchiveId, slotOutcomes: run.slotOutcomes ?? [] });
+        }
+      }
+      for (const primary of primaries) {
+        const effectiveExecuted =
+          primary.slotOutcomes.some((o) => o.finalState === "EXECUTED") ||
+          amendments.some((a) => a.predecessorRunArchiveId === primary.runArchiveId && a.status === "EXECUTED");
+        if (effectiveExecuted) executedRunCount++;
+      }
+    }
+  }
+
+  return { category, roundCount, runCount, executedRunCount, recommendMigrateOrRepayCount, holdCount };
 }
 
 function main() {
@@ -108,6 +183,15 @@ function main() {
   arenaRoundIds.sort((a, b) => a - b);
   const latestRoundId = arenaRoundIds.length > 0 ? arenaRoundIds[arenaRoundIds.length - 1] : 0;
 
+  const categories = [
+    summarizeCategory("grid-trading", "grid-rounds", "grid-runs"),
+    summarizeCategory("yield-optimisation", "yield-rounds"),
+    summarizeCategory("health-factor-monitoring", "health-factor-rounds"),
+  ];
+  for (const c of categories) {
+    console.log(`Category ${c.category}: ${c.roundCount} rounds, ${c.runCount} runs (${c.executedRunCount} executed), ${c.recommendMigrateOrRepayCount} recommend, ${c.holdCount} hold`);
+  }
+
   const manifest = {
     generatedAt: new Date().toISOString(),
     totalRuns,
@@ -118,6 +202,7 @@ function main() {
     entries,
     latestRoundId,
     arenaRoundIds,
+    categories,
   };
   writeFileSync(resolve(GENERATED_DIR, "archiveManifest.json"), JSON.stringify(manifest, null, 2));
   console.log(`Wrote ${resolve(GENERATED_DIR, "archiveManifest.json")}`);

@@ -30,8 +30,14 @@ export const DEFAULT_EXECUTION_POLICY: ExecutionPolicy = {
 
 export interface ExecutionAuthorizationInputs {
   policy: ExecutionPolicy;
-  /** What the evaluator's winner actually proposes -- "hold" is never authorized, trivially. */
-  winnerAction: "hold" | "rebalance";
+  /**
+   * What the evaluator's winner actually proposes -- "hold" is never authorized, trivially.
+   * "grid-rebalance" is Grid Trading's execution-bearing action (Gate 1-scoped, same custody
+   * layer as "rebalance"). Yield Optimisation and Health Factor Monitoring terminate at a
+   * recommendation and never call authorizeExecution at all in this scope -- see
+   * docs/AGENT_ARENA_ARCHITECTURE.md -- so their action kinds are deliberately absent here.
+   */
+  winnerAction: "hold" | "rebalance" | "grid-rebalance";
   simulationExecutable: boolean;
   ownershipVerified: boolean;
   /** The block OBSERVE read state at. */

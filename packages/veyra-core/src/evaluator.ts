@@ -3,13 +3,13 @@
 // Deliberately simple, v1, equal-weighted, no invented precision. Computes every metric
 // uniformly for every proposal from the same formulas -- no candidate self-reports its own score.
 
+import { scoreProposals } from "./evaluatorKernel.js";
 import type {
   EvaluationResult,
   JobSpec,
   MarketSnapshot,
   ProposalMetrics,
   ScoreBreakdown,
-  ScoredProposal,
   StrategyProposal,
 } from "./types.js";
 
@@ -89,51 +89,6 @@ export function evaluate(
   proposals: StrategyProposal[],
 ): EvaluationResult {
   const metrics = proposals.map((p) => computeMetrics(job, snapshot, p));
-  const weights = weightsFor(job);
-
-  const feeEffNorm = normalize(
-    metrics.map((m) => m.estimatedFeeEfficiency),
-    true,
-  );
-  const riskNorm = normalize(
-    metrics.map((m) => m.riskScore),
-    false, // lower risk is better
-  );
-  const gasNorm = normalize(
-    metrics.map((m) => Number(m.estimatedGasWei)),
-    false, // lower gas is better
-  );
-  const feasibilityNorm = metrics.map((m) => (m.executionFeasible ? 100 : 0));
-
-  const scored: ScoredProposal[] = proposals.map((proposal, i) => {
-    const normalized = {
-      feeEfficiency: feeEffNorm[i],
-      risk: riskNorm[i],
-      gas: gasNorm[i],
-      feasibility: feasibilityNorm[i],
-    };
-    const totalScore =
-      weights.feeEfficiency * normalized.feeEfficiency +
-      weights.risk * normalized.risk +
-      weights.gas * normalized.gas +
-      weights.feasibility * normalized.feasibility;
-
-    return {
-      proposal,
-      metrics: metrics[i],
-      score: { weights, normalized, totalScore },
-      isWinner: false, // set below
-    };
-  });
-
-  const winner = scored.reduce((best, current) => {
-    if (current.score.totalScore > best.score.totalScore) return current;
-    if (current.score.totalScore === best.score.totalScore) {
-      return current.metrics.estimatedGasWei < best.metrics.estimatedGasWei ? current : best;
-    }
-    return best;
-  });
-  winner.isWinner = true;
-
+  const { scored, winner } = scoreProposals(job, proposals, metrics);
   return { jobId: job.jobId, snapshot, scored, winner };
 }

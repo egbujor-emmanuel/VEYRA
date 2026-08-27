@@ -13,16 +13,12 @@ export type JobStatus =
   | "failed"
   | "expired";
 
-export interface JobSpec {
+// Fields common to every category -- the only fields the shared kernel (evaluatorKernel.ts,
+// executionPolicy.ts) is allowed to touch, so adding a category can never require changing them.
+interface JobSpecBase {
   jobId: string;
   createdAt: string; // ISO timestamp
   ownerWallet: string;
-  category: "rebalance"; // only value in MVP; other categories slot in later without a schema change
-  target: {
-    protocol: "pancakeswap-v3";
-    network: "bsc-testnet";
-    positionTokenId: number;
-  };
   constraints: {
     maxSpendWei: bigint;
     maxSlippageBps: number;
@@ -36,6 +32,45 @@ export interface JobSpec {
   status: JobStatus;
   erc8183JobId: string | null; // always null in MVP; reserved for the deferred on-chain-escrow path
 }
+
+export interface RebalanceJobSpec extends JobSpecBase {
+  category: "rebalance";
+  target: {
+    protocol: "pancakeswap-v3";
+    network: "bsc-testnet";
+    positionTokenId: number;
+  };
+}
+
+export interface GridTradingJobSpec extends JobSpecBase {
+  category: "grid-trading";
+  target: {
+    protocol: "pancakeswap-v3";
+    network: "bsc-testnet";
+    poolAddress: `0x${string}`;
+    gridPositionTokenIds: number[];
+  };
+}
+
+export interface YieldOptimisationJobSpec extends JobSpecBase {
+  category: "yield-optimisation";
+  target: {
+    protocol: "pancakeswap-v3";
+    network: "bsc-testnet";
+    candidatePools: { poolAddress: `0x${string}`; label: string }[];
+  };
+}
+
+export interface HealthFactorJobSpec extends JobSpecBase {
+  category: "health-factor-monitoring";
+  target: {
+    protocol: "venus";
+    network: "bsc-testnet";
+    account: `0x${string}`;
+  };
+}
+
+export type JobSpec = RebalanceJobSpec | GridTradingJobSpec | YieldOptimisationJobSpec | HealthFactorJobSpec;
 
 // ---- Market snapshot: SOURCE reads + shared DERIVED data, computed ONCE per job and
 // handed identically to every candidate. All candidates see exactly the same market. ----
@@ -63,7 +98,39 @@ export interface HoldAction {
   kind: "hold";
 }
 
-export type ProposedAction = RebalanceAction | HoldAction;
+// Grid Trading: adjust one or more grid slots (each slot is its own narrow-range V3 position).
+export interface GridRebalanceAction {
+  kind: "grid-rebalance";
+  slotAdjustments: Array<{ slotIndex: number; newRange: { tickLower: number; tickUpper: number } }>;
+}
+
+// Yield Optimisation and Health Factor Monitoring terminate at a recommendation in this scope --
+// see docs/AGENT_ARENA_ARCHITECTURE.md and the category orchestrators for why execution is
+// deliberately out of scope, not an oversight.
+export interface YieldRecommendMigrateAction {
+  kind: "recommend-migrate";
+  fromPool: `0x${string}`;
+  toPool: `0x${string}`;
+  /**
+   * Percentage difference in cumulative (all-time) fee-growth-per-liquidity between the two
+   * pools -- deliberately NOT an APR. An annualized rate needs a time-normalized delta (two
+   * readings, a known elapsed period); this is a single-snapshot, cumulative-since-inception
+   * comparison. See yieldSnapshot.ts's own doc comment for the full rationale.
+   */
+  cumulativeFeeGrowthDeltaBps: number;
+}
+
+export interface HealthFactorRecommendAction {
+  kind: "recommend-repay" | "recommend-add-collateral";
+  suggestedAmountWei: bigint;
+}
+
+export type ProposedAction =
+  | RebalanceAction
+  | HoldAction
+  | GridRebalanceAction
+  | YieldRecommendMigrateAction
+  | HealthFactorRecommendAction;
 
 export interface StrategyProposal {
   candidateId: string;

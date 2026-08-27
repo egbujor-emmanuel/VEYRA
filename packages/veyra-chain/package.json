@@ -11,11 +11,15 @@
     "./simulate": { "types": "./dist/src/simulate.d.ts", "default": "./dist/src/simulate.js" },
     "./rebalanceQuote": { "types": "./dist/src/rebalanceQuote.d.ts", "default": "./dist/src/rebalanceQuote.js" },
     "./testnetAddresses": { "types": "./dist/src/testnetAddresses.d.ts", "default": "./dist/src/testnetAddresses.js" },
-    "./abis": { "types": "./dist/src/abis.d.ts", "default": "./dist/src/abis.js" }
+    "./abis": { "types": "./dist/src/abis.d.ts", "default": "./dist/src/abis.js" },
+    "./gridPositionReader": { "types": "./dist/src/gridPositionReader.d.ts", "default": "./dist/src/gridPositionReader.js" },
+    "./yieldPositionReader": { "types": "./dist/src/yieldPositionReader.d.ts", "default": "./dist/src/yieldPositionReader.js" },
+    "./healthFactorReader": { "types": "./dist/src/healthFactorReader.d.ts", "default": "./dist/src/healthFactorReader.js" },
+    "./venusAbis": { "types": "./dist/src/venusAbis.d.ts", "default": "./dist/src/venusAbis.js" }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "tsc -p tsconfig.json && node --test dist/test/positionReader.test.js",
+    "test": "tsc -p tsconfig.json && node --test dist/test/positionReader.test.js dist/test/altanaExecutor.test.js dist/test/sessionPause.test.js dist/test/relayHealthCheck.test.js",
     "test:live": "tsc -p tsconfig.json && node --test dist/test/positionReader.live.test.js dist/test/simulate.live.test.js"
   },
   "dependencies": {

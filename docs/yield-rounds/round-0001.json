@@ -1,0 +1,138 @@
+{
+  "roundId": 1,
+  "artifactHash": "adf7edb4900338c68de87bfe0610e7619db318cadf0801fe9ae73466c78fc13c",
+  "kind": "YIELD_OPTIMISATION_RECOMMENDATION",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "observed": {
+    "currentPoolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "pools": [
+      {
+        "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+        "label": "VUSD/WBNB 0.25%",
+        "fee": 2500,
+        "currentLiquidity": "84527628170453267799",
+        "feeGrowthGlobal0X128": "568424492774013007947066537284013552",
+        "feeGrowthGlobal1X128": "39913522602979976542723784965420"
+      },
+      {
+        "poolAddress": "0x8523c332b034b6D7586116b7739D0048fF1B7888",
+        "label": "VUSD/WBNB 0.05%",
+        "fee": 500,
+        "currentLiquidity": "0",
+        "feeGrowthGlobal0X128": "0",
+        "feeGrowthGlobal1X128": "0"
+      }
+    ]
+  },
+  "job": {
+    "jobId": "yield-loop-35798c38-dcf6-4bde-a810-8a1a8e1df3c3",
+    "createdAt": "2026-08-27T04:55:29.451Z",
+    "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+    "category": "yield-optimisation",
+    "target": {
+      "protocol": "pancakeswap-v3",
+      "network": "bsc-testnet",
+      "candidatePools": [
+        {
+          "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+          "label": "VUSD/WBNB 0.25%"
+        },
+        {
+          "poolAddress": "0x8523c332b034b6D7586116b7739D0048fF1B7888",
+          "label": "VUSD/WBNB 0.05%"
+        }
+      ]
+    },
+    "constraints": {
+      "maxSpendWei": "0",
+      "maxSlippageBps": 100,
+      "riskTolerance": "medium",
+      "deadlineSeconds": 600
+    },
+    "budget": {
+      "currency": "U",
+      "amountWei": "0"
+    },
+    "status": "evaluating",
+    "erc8183JobId": null
+  },
+  "proposals": [
+    {
+      "candidateId": "yield-optimiser-v1",
+      "displayLabel": "Our Agent",
+      "agentIdOnChain": 1890,
+      "proposedAction": {
+        "kind": "hold"
+      },
+      "rationale": "No candidate pool's cumulative fee-growth score exceeds the current pool (VUSD/WBNB 0.25%, fee 2500); staying.",
+      "metrics": {
+        "estimatedGasWei": "0",
+        "estimatedFeeEfficiency": 100,
+        "estimatedSlippageBps": 0,
+        "riskScore": 0,
+        "executionFeasible": true
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 100,
+          "feasibility": 100
+        },
+        "totalScore": 100
+      },
+      "isWinner": true
+    },
+    {
+      "candidateId": "baseline-hold-yield",
+      "displayLabel": "Baseline Strategy",
+      "agentIdOnChain": null,
+      "proposedAction": {
+        "kind": "hold"
+      },
+      "rationale": "Baseline: never recommends migrating, regardless of market conditions.",
+      "metrics": {
+        "estimatedGasWei": "0",
+        "estimatedFeeEfficiency": 100,
+        "estimatedSlippageBps": 0,
+        "riskScore": 0,
+        "executionFeasible": true
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 100,
+          "feasibility": 100
+        },
+        "totalScore": 100
+      },
+      "isWinner": false
+    }
+  ],
+  "winnerCandidateId": "yield-optimiser-v1",
+  "winningProposal": {
+    "candidateId": "yield-optimiser-v1",
+    "displayLabel": "Our Agent",
+    "agentIdOnChain": 1890,
+    "proposedAction": {
+      "kind": "hold"
+    },
+    "rationale": "No candidate pool's cumulative fee-growth score exceeds the current pool (VUSD/WBNB 0.25%, fee 2500); staying."
+  },
+  "status": "HOLD",
+  "generatedAt": "2026-08-27T04:55:29.458Z"
+}

@@ -181,6 +181,11 @@ export const POOL_ABI = [
     ],
   },
   { type: "function", name: "liquidity", stateMutability: "view", inputs: [], outputs: [{ type: "uint128" }] },
+  // Cumulative, all-time fee growth per unit of liquidity (Q128 fixed point) -- NOT a rate.
+  // Yield Optimisation reads these as a real, observed, comparable-across-pools proxy; see
+  // yieldSnapshot.ts's own doc comment for why this is deliberately not presented as an APR.
+  { type: "function", name: "feeGrowthGlobal0X128", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "feeGrowthGlobal1X128", stateMutability: "view", inputs: [], outputs: [{ type: "uint256" }] },
 ] as const;
 
 // Standard Uniswap V3 periphery ISwapRouter.exactInputSingle -- PancakeSwap V3's SwapRouter is

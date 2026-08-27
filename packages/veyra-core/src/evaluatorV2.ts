@@ -23,7 +23,8 @@
 // still legitimately win. No rebalance bonus, no candidate-identity branching anywhere in this
 // file -- same structural guarantee as v1 and as executionPolicy.ts.
 
-import { actionRange, widthDrivenMetric, normalize, weightsFor, PLACEHOLDER_REBALANCE_GAS_WEI } from "./evaluator.js";
+import { actionRange, widthDrivenMetric, PLACEHOLDER_REBALANCE_GAS_WEI } from "./evaluator.js";
+import { scoreProposals } from "./evaluatorKernel.js";
 import type { JobSpec, MarketSnapshot, ScoreBreakdown, StrategyProposal } from "./types.js";
 
 export interface ProposalMetricsV2 {
@@ -89,38 +90,6 @@ export function computeMetricsV2(job: JobSpec, snapshot: MarketSnapshot, proposa
 /** Same weighting rule as v1 (weightsFor is reused, not reimplemented) -- only the metrics feeding it changed. */
 export function evaluateV2(job: JobSpec, snapshot: MarketSnapshot, proposals: StrategyProposal[]): EvaluationResultV2 {
   const metrics = proposals.map((p) => computeMetricsV2(job, snapshot, p));
-  const weights = weightsFor(job);
-
-  const feeEffNorm = normalize(
-    metrics.map((m) => m.estimatedFeeEfficiency),
-    true,
-  );
-  const riskNorm = normalize(
-    metrics.map((m) => m.riskScore),
-    false,
-  );
-  const gasNorm = normalize(
-    metrics.map((m) => Number(m.estimatedGasWei)),
-    false,
-  );
-  const feasibilityNorm = metrics.map((m) => (m.executionFeasible ? 100 : 0));
-
-  const scored: ScoredProposalV2[] = proposals.map((proposal, i) => {
-    const normalized = { feeEfficiency: feeEffNorm[i]!, risk: riskNorm[i]!, gas: gasNorm[i]!, feasibility: feasibilityNorm[i]! };
-    const totalScore =
-      weights.feeEfficiency * normalized.feeEfficiency + weights.risk * normalized.risk + weights.gas * normalized.gas + weights.feasibility * normalized.feasibility;
-
-    return { proposal, metrics: metrics[i]!, score: { weights, normalized, totalScore }, isWinner: false };
-  });
-
-  const winner = scored.reduce((best, current) => {
-    if (current.score.totalScore > best.score.totalScore) return current;
-    if (current.score.totalScore === best.score.totalScore) {
-      return current.metrics.estimatedGasWei < best.metrics.estimatedGasWei ? current : best;
-    }
-    return best;
-  });
-  winner.isWinner = true;
-
+  const { scored, winner } = scoreProposals(job, proposals, metrics);
   return { evaluatorPolicy: "v2-market-aware", jobId: job.jobId, snapshot, scored, winner };
 }

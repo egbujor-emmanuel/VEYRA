@@ -7,10 +7,11 @@ import {
   baselineSymmetricRangeStrategy,
   VEYRA_AGENT_ID_ON_CHAIN,
   type JobSpec,
+  type RebalanceJobSpec,
   type MarketSnapshot,
 } from "../src/index.js";
 
-function mockJob(overrides: Partial<JobSpec> = {}): JobSpec {
+function mockJob(overrides: Partial<RebalanceJobSpec> = {}): JobSpec {
   return {
     jobId: "job-1",
     createdAt: new Date().toISOString(),

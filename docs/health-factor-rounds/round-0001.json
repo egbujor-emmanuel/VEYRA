@@ -1,0 +1,121 @@
+{
+  "roundId": 1,
+  "artifactHash": "0b60180a55bf260419ffc0bf951211085910782ab9f8bd71d01de1da8475f517",
+  "kind": "HEALTH_FACTOR_MONITORING_RECOMMENDATION",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "observed": {
+    "observation": {
+      "account": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+      "comptrollerError": "0",
+      "liquidityUsd1e18": "8849997761687166348",
+      "shortfallUsd1e18": "0",
+      "borrowedPrincipalUnderlyingUnits": "1500000",
+      "borrowedTokenSymbol": "USDT",
+      "borrowedTokenDecimals": 6
+    },
+    "solvencyStatus": "HEALTHY",
+    "borrowToCapacityRatio": 14
+  },
+  "job": {
+    "jobId": "health-factor-loop-6c3637ea-a8bb-4b46-9ee9-e8f1f7365dbc",
+    "createdAt": "2026-08-27T05:35:29.359Z",
+    "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+    "category": "health-factor-monitoring",
+    "target": {
+      "protocol": "venus",
+      "network": "bsc-testnet",
+      "account": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11"
+    },
+    "constraints": {
+      "maxSpendWei": "0",
+      "maxSlippageBps": 100,
+      "riskTolerance": "medium",
+      "deadlineSeconds": 600
+    },
+    "budget": {
+      "currency": "U",
+      "amountWei": "0"
+    },
+    "status": "evaluating",
+    "erc8183JobId": null
+  },
+  "proposals": [
+    {
+      "candidateId": "health-factor-monitor-v1",
+      "displayLabel": "Our Agent",
+      "agentIdOnChain": 1890,
+      "proposedAction": {
+        "kind": "hold"
+      },
+      "rationale": "Borrow-to-capacity ratio (14.0%) is within the 60% warning threshold -- position is healthy, no action recommended.",
+      "metrics": {
+        "estimatedGasWei": "0",
+        "estimatedFeeEfficiency": 86,
+        "estimatedSlippageBps": 0,
+        "riskScore": 14,
+        "executionFeasible": true
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 100,
+          "feasibility": 100
+        },
+        "totalScore": 100
+      },
+      "isWinner": true
+    },
+    {
+      "candidateId": "baseline-hold-health-factor",
+      "displayLabel": "Baseline Strategy",
+      "agentIdOnChain": null,
+      "proposedAction": {
+        "kind": "hold"
+      },
+      "rationale": "Baseline: never recommends action, regardless of solvency data.",
+      "metrics": {
+        "estimatedGasWei": "0",
+        "estimatedFeeEfficiency": 86,
+        "estimatedSlippageBps": 0,
+        "riskScore": 14,
+        "executionFeasible": true
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 100,
+          "feasibility": 100
+        },
+        "totalScore": 100
+      },
+      "isWinner": false
+    }
+  ],
+  "winnerCandidateId": "health-factor-monitor-v1",
+  "winningProposal": {
+    "candidateId": "health-factor-monitor-v1",
+    "displayLabel": "Our Agent",
+    "agentIdOnChain": 1890,
+    "proposedAction": {
+      "kind": "hold"
+    },
+    "rationale": "Borrow-to-capacity ratio (14.0%) is within the 60% warning threshold -- position is healthy, no action recommended."
+  },
+  "status": "HOLD",
+  "generatedAt": "2026-08-27T05:35:29.367Z"
+}

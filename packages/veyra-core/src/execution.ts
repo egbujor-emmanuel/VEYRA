@@ -123,6 +123,13 @@ export function planExecution(opts: PlanExecutionOpts): ExecutionPlan {
     };
   }
 
+  // This planner is rebalance-specific (decrease/collect/mint against ONE position) -- it was
+  // already implicitly assuming "hold or rebalance" before ProposedAction grew more variants for
+  // the other categories; make that precondition explicit rather than let it silently misread a
+  // grid/yield/health-factor proposal's fields.
+  if (proposal.proposedAction.kind !== "rebalance") {
+    throw new Error(`planExecution only supports "hold"/"rebalance" proposals, got "${proposal.proposedAction.kind}"`);
+  }
   const targetRange = proposal.proposedAction.newRange;
 
   // DERIVED from OBSERVED state via the real V3 liquidity<->amount formula -- what fully

@@ -1,0 +1,182 @@
+{
+  "artifactHash": "7178a1f363d018139335aecf55c9bb897fc70dc51f62fce1ac802289bad00f56",
+  "kind": "GRID_ORCHESTRATOR_LOOP_RESUMED_MINT",
+  "label": "Resume-and-complete grid slot 1 (position #37092) from run-0002 after the ratio-fixing swap undershot for a narrow, edge-of-price target range. Real, controlled -- not autonomous. Two corrective swap iterations were needed; both are recorded honestly below, including the first iteration that still left a 2.35% stranded fraction just over the 1% threshold.",
+  "generatedAt": "2026-08-27T04:11:25.489Z",
+  "network": "bsc-testnet",
+  "predecessorRunArchiveId": 2,
+  "predecessorArtifactHash": "66258c61666c91d00d59aef7e1ed0e70b0ada947cdbd504cc36a3e8b5eaa1f0d",
+  "rootCause": "computeRebalanceSwapRequirement sizes a swap assuming the collected amount should convert toward whatever the target range needs, but for a narrow (400-tick) range sitting close to the current-price edge, the closed-form estimate overshot the real amount needed -- the live swap converted too much WBNB into VUSD, leaving ~52% of the resulting VUSD stranded relative to the tiny remaining WBNB. This is a real precision limitation of the existing swap-sizing formula on narrow ranges, not a bug in the safety gate: the gate correctly refused to mint at 52% stranded. A first corrective swap (re-run through the same formula, now fed the REAL post-swap delta amounts and a fresh price) closed the gap to 2.35% -- still over the 1% threshold. A second corrective iteration, same method, closed it to 0.11%, which cleared.",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "winningProposal": {
+    "candidateId": "gridkeeper-v1",
+    "displayLabel": "Our Agent",
+    "agentIdOnChain": 1890,
+    "proposedAction": {
+      "kind": "grid-rebalance",
+      "slotAdjustments": [
+        {
+          "slotIndex": 1,
+          "newRange": {
+            "tickLower": -58250,
+            "tickUpper": -57850
+          }
+        }
+      ]
+    },
+    "rationale": "1 of 2 grid slot(s) drifted out of range around current tick -58233; recentering."
+  },
+  "reusedFromPredecessor": {
+    "decreaseLiquidityTx": {
+      "step": "decreaseLiquidity",
+      "hash": "0x5e096c7f1d77791e151a4ccf6cff9828fe9bfa86d94c4ff54a13dae2edc66732",
+      "gasUsed": "146619",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127417304"
+    },
+    "collectTx": {
+      "step": "collect",
+      "hash": "0xb32ee7fc65d4412f659dd3800f74d43a4d229dfc29ac6e2b05ffb6e171c9440d",
+      "gasUsed": "67750",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127417310",
+      "collectedAmount0": "0",
+      "collectedAmount1": "3999999999999999"
+    },
+    "firstSwapApproveTx": {
+      "step": "approve-swaprouter-token1",
+      "hash": "0x3e1d132b599495d227d92bb73d11d3230c103368dbfbc47dc323f2358c86e134",
+      "gasUsed": "46064",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127417320"
+    },
+    "firstSwapTx": {
+      "step": "ratio-fix-swap",
+      "hash": "0x3896745dc812c903fbe2841415ac33cfc608c512985052bd4e0d53d6842a9dd9",
+      "gasUsed": "116394",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "127417330",
+      "direction": "SWAP_TOKEN1_FOR_TOKEN0",
+      "soldWbnb": "3823372064319496",
+      "boughtVusd": "1287838521119998285"
+    }
+  },
+  "correctiveSwaps": [
+    {
+      "attempt": 1,
+      "preSwapAmounts": {
+        "mintAmount0": "1287838521119998285",
+        "mintAmount1": "176627935680503"
+      },
+      "swapRequirement": {
+        "direction": "SWAP_TOKEN0_FOR_TOKEN1",
+        "amountIn": "58691959444402261",
+        "estimatedAmountOut": "173961522954941"
+      },
+      "approveTx": {
+        "step": "approve-swaprouter-corrective-1",
+        "hash": "0x4b77e7e9f048d1c82c51b4796429dee942df0090101020e318edcf5523fdc713",
+        "status": "success"
+      },
+      "swapTx": {
+        "step": "corrective-ratio-fix-swap-1",
+        "hash": "0x78ee8b0c925ec4af484c095d65964d35435d743b1c2d5a87ce87b31814430515",
+        "status": "success"
+      },
+      "realSwapDelta": {
+        "vusd": "-58691959444402261",
+        "wbnb": "173519777033984"
+      },
+      "postSwapMintAmount0": "1229146561675596024",
+      "postSwapMintAmount1": "350147712714487",
+      "postSwapStrandedFraction0": 8.135726293183304e-19,
+      "postSwapStrandedFraction1": 0.023543969176349037,
+      "result": "STILL_OVER_THRESHOLD"
+    },
+    {
+      "attempt": 2,
+      "preSwapAmounts": {
+        "mintAmount0": "1229146561675596024",
+        "mintAmount1": "350147712714487"
+      },
+      "swapRequirement": {
+        "direction": "SWAP_TOKEN1_FOR_TOKEN0",
+        "amountIn": "7536522472733",
+        "estimatedAmountOut": "2542908041176088"
+      },
+      "quote": {
+        "amountOut": "2536546437769992"
+      },
+      "approveTx": {
+        "step": "approve-swaprouter-corrective-2",
+        "hash": "0x751f3f6b9d2514633b1d40973a057adbb3f6ed0fbb1569dd9333e814e6b33a1b",
+        "status": "success"
+      },
+      "swapTx": {
+        "step": "corrective-ratio-fix-swap-2",
+        "hash": "0xb8a053324a58c9f5caa3fb4668d03d538ad30badd5adee3a267227560eaf3db4",
+        "status": "success"
+      },
+      "realSwapDelta": {
+        "vusd": "2536546437769992",
+        "wbnb": "-7536522472733"
+      },
+      "postSwapMintAmount0": "1231683108113366016",
+      "postSwapMintAmount1": "342611190241754",
+      "postSwapStrandedFraction0": 0.0010919538903559653,
+      "postSwapStrandedFraction1": 2.918760473919074e-15,
+      "result": "CLEARED_THRESHOLD"
+    }
+  ],
+  "finalStrandedFractionBeforeMint": {
+    "token0": 0.0010919538903559653,
+    "token1": 2.918760473919074e-15
+  },
+  "mintArgs": {
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "fee": 2500,
+    "tickLower": -58250,
+    "tickUpper": -57850,
+    "amount0Desired": "1231683108113366016",
+    "amount1Desired": "342611190241754",
+    "amount0Min": "1219366277032232355",
+    "amount1Min": "339185078339336",
+    "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11"
+  },
+  "mintApprovals": {
+    "note": "Two ERC20 approve transactions (VUSD and WBNB to the NFPM) were sent immediately before the mint tx; their individual hashes were not captured in the completion script output -- non-load-bearing bookkeeping steps, independently superseded by the mint transaction and the post-mint on-chain verification below."
+  },
+  "mintTx": {
+    "step": "mint",
+    "hash": "0xeceb7da8f0cce225211923d01a20b986afc22fa20b8afe910b269c029f380f78",
+    "status": "success"
+  },
+  "oldPosition": {
+    "tokenId": "37092"
+  },
+  "newPosition": {
+    "tokenId": "37093",
+    "positionTokenId": "37093",
+    "blockNumber": "127420869",
+    "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+    "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+    "fee": 2500,
+    "tickLower": -58250,
+    "tickUpper": -57850,
+    "positionLiquidity": "3694848853615941866",
+    "token0Decimals": 18,
+    "token1Decimals": 18,
+    "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "sqrtPriceX96": "4313208946386239847387637817",
+    "currentTick": -58216,
+    "poolLiquidity": "84527628170453267799"
+  },
+  "verified": true,
+  "status": "EXECUTED"
+}

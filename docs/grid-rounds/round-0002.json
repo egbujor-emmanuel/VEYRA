@@ -1,0 +1,341 @@
+{
+  "roundId": 2,
+  "artifactHash": "3204f5933bea408df02dd079e43453dc25824cd4bf1cf103cacd67aba3a21ed9",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "gridPositionTokenIds": [
+    "37091",
+    "37092"
+  ],
+  "observed": [
+    {
+      "slotIndex": 0,
+      "observation": {
+        "positionTokenId": "37091",
+        "blockNumber": "127416463",
+        "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+        "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+        "fee": 2500,
+        "tickLower": -58650,
+        "tickUpper": -58250,
+        "positionLiquidity": "3717120484656511884",
+        "token0Decimals": 18,
+        "token1Decimals": 18,
+        "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+        "sqrtPriceX96": "4309633547793988935762660553",
+        "currentTick": -58233,
+        "poolLiquidity": "80832779316837325933"
+      }
+    },
+    {
+      "slotIndex": 1,
+      "observation": {
+        "positionTokenId": "37092",
+        "blockNumber": "127416463",
+        "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+        "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+        "fee": 2500,
+        "tickLower": -60350,
+        "tickUpper": -60150,
+        "positionLiquidity": "8134420354442075954",
+        "token0Decimals": 18,
+        "token1Decimals": 18,
+        "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+        "sqrtPriceX96": "4309633547793988935762660553",
+        "currentTick": -58233,
+        "poolLiquidity": "80832779316837325933"
+      }
+    }
+  ],
+  "gridSnapshot": {
+    "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "slots": [
+      {
+        "currentTick": -58233,
+        "currentRange": {
+          "tickLower": -58650,
+          "tickUpper": -58250
+        },
+        "currentLiquidity": "3717120484656511884",
+        "tickSpacing": 50,
+        "recentVolatilityBps": 0
+      },
+      {
+        "currentTick": -58233,
+        "currentRange": {
+          "tickLower": -60350,
+          "tickUpper": -60150
+        },
+        "currentLiquidity": "8134420354442075954",
+        "tickSpacing": 50,
+        "recentVolatilityBps": 0
+      }
+    ]
+  },
+  "job": {
+    "jobId": "grid-loop-cfd502b2-834e-4e7b-b79c-f4b307f8a945",
+    "createdAt": "2026-08-27T03:37:30.059Z",
+    "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+    "category": "grid-trading",
+    "target": {
+      "protocol": "pancakeswap-v3",
+      "network": "bsc-testnet",
+      "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+      "gridPositionTokenIds": [
+        37091,
+        37092
+      ]
+    },
+    "constraints": {
+      "maxSpendWei": "20000000000000000",
+      "maxSlippageBps": 100,
+      "riskTolerance": "medium",
+      "deadlineSeconds": 600
+    },
+    "budget": {
+      "currency": "U",
+      "amountWei": "0"
+    },
+    "status": "evaluating",
+    "erc8183JobId": null
+  },
+  "proposals": [
+    {
+      "candidateId": "gridkeeper-v1",
+      "displayLabel": "Our Agent",
+      "agentIdOnChain": 1890,
+      "proposedAction": {
+        "kind": "grid-rebalance",
+        "slotAdjustments": [
+          {
+            "slotIndex": 1,
+            "newRange": {
+              "tickLower": -58250,
+              "tickUpper": -57850
+            }
+          }
+        ]
+      },
+      "rationale": "1 of 2 grid slot(s) drifted out of range around current tick -58233; recentering.",
+      "metrics": {
+        "estimatedGasWei": "3000000000000000",
+        "estimatedFeeEfficiency": 52.125,
+        "estimatedSlippageBps": 0,
+        "riskScore": 97.875,
+        "executionFeasible": true
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 100,
+          "risk": 100,
+          "gas": 0,
+          "feasibility": 100
+        },
+        "totalScore": 75
+      },
+      "isWinner": true
+    },
+    {
+      "candidateId": "baseline-hold-grid",
+      "displayLabel": "Baseline Strategy",
+      "agentIdOnChain": null,
+      "proposedAction": {
+        "kind": "hold"
+      },
+      "rationale": "Baseline: never adjusts the grid, regardless of market conditions.",
+      "metrics": {
+        "estimatedGasWei": "0",
+        "estimatedFeeEfficiency": 50,
+        "estimatedSlippageBps": 0,
+        "riskScore": 100,
+        "executionFeasible": true
+      },
+      "score": {
+        "weights": {
+          "feeEfficiency": 0.25,
+          "risk": 0.25,
+          "gas": 0.25,
+          "feasibility": 0.25
+        },
+        "normalized": {
+          "feeEfficiency": 0,
+          "risk": 0,
+          "gas": 100,
+          "feasibility": 100
+        },
+        "totalScore": 50
+      },
+      "isWinner": false
+    }
+  ],
+  "winnerCandidateId": "gridkeeper-v1",
+  "executionPlan": {
+    "jobId": "grid-loop-cfd502b2-834e-4e7b-b79c-f4b307f8a945",
+    "candidateId": "gridkeeper-v1",
+    "slotPlans": [
+      {
+        "slotIndex": 1,
+        "positionTokenId": 37092,
+        "plan": {
+          "jobId": "grid-loop-cfd502b2-834e-4e7b-b79c-f4b307f8a945",
+          "candidateId": "gridkeeper-v1",
+          "positionTokenId": 37092,
+          "network": "bsc-testnet",
+          "currentRange": {
+            "tickLower": -60350,
+            "tickUpper": -60150
+          },
+          "targetRange": {
+            "tickLower": -58250,
+            "tickUpper": -57850
+          },
+          "liquidityToMigrate": "8134420354442075954",
+          "expectedAmounts": {
+            "amount0": "0",
+            "amount1": "3999999999999999"
+          },
+          "steps": [
+            {
+              "kind": "decreaseLiquidity",
+              "description": "Remove all 8134420354442075954 liquidity from position #37092 (range [-60350, -60150))",
+              "tokenId": 37092,
+              "liquidity": "8134420354442075954",
+              "amount0Min": "0",
+              "amount1Min": "3959999999999999",
+              "deadline": 1787802450,
+              "estimatedGasWei": "1000000000000000"
+            },
+            {
+              "kind": "collect",
+              "description": "Collect all owed token0/token1 (principal + fees) from position #37092 to 0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+              "tokenId": 37092,
+              "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+              "amount0Max": "340282366920938463463374607431768211455",
+              "amount1Max": "340282366920938463463374607431768211455",
+              "estimatedGasWei": "1000000000000000"
+            },
+            {
+              "kind": "mint",
+              "description": "Mint a new position on [-58250, -57850) using the collected amounts",
+              "token0": "0x00efbCce2ff935332fC66851CfD34A000F6c7B8d",
+              "token1": "0xae13d989daC2f0dEbFf460aC112a837C89BAa7cd",
+              "fee": 2500,
+              "tickLower": -58250,
+              "tickUpper": -57850,
+              "amount0Desired": "0",
+              "amount1Desired": "3999999999999999",
+              "amount0Min": "0",
+              "amount1Min": "3959999999999999",
+              "recipient": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+              "deadline": 1787802450,
+              "estimatedGasWei": "1000000000000000"
+            }
+          ],
+          "estimatedGasWei": "3000000000000000",
+          "feasible": true,
+          "feasibilityReasons": [],
+          "status": "EXECUTION_NOT_SENT"
+        }
+      }
+    ],
+    "estimatedGasWei": "3000000000000000",
+    "feasible": true,
+    "feasibilityReasons": []
+  },
+  "simulation": {
+    "jobId": "grid-loop-cfd502b2-834e-4e7b-b79c-f4b307f8a945",
+    "candidateId": "gridkeeper-v1",
+    "slotResults": [
+      {
+        "slotIndex": 1,
+        "result": {
+          "jobId": "grid-loop-cfd502b2-834e-4e7b-b79c-f4b307f8a945",
+          "candidateId": "gridkeeper-v1",
+          "positionTokenId": 37092,
+          "action": "REBALANCE",
+          "oldRange": {
+            "tickLower": -60350,
+            "tickUpper": -60150
+          },
+          "targetRange": {
+            "tickLower": -58250,
+            "tickUpper": -57850
+          },
+          "targetRangeValidity": {
+            "status": "VALID",
+            "detail": "[-58250, -57850) is a valid, tick-spacing-aligned range"
+          },
+          "mintStructuralValidity": {
+            "status": "VALID",
+            "detail": "token ordering and non-zero amounts confirmed"
+          },
+          "ratioAdjustment": {
+            "status": "NOT_IMPLEMENTED",
+            "strandedAmount0": "0",
+            "strandedAmount1": "3999999999999999",
+            "strandedFraction0": 0,
+            "strandedFraction1": 1,
+            "ratioFixRequired": true,
+            "detail": "without a ratio-fixing swap, ~0.0% of token0 and ~100.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-58250, -57850) needs at the current price"
+          },
+          "slippageProtection": {
+            "status": "VALID",
+            "detail": "amount0Min/amount1Min are nonzero wherever a nonzero amount is expected"
+          },
+          "pureExecutable": false,
+          "pureExecutableReasons": [
+            "ratio-fixing swap required but not implemented: without a ratio-fixing swap, ~0.0% of token0 and ~100.0% of token1 would be stranded/refunded by mint() -- the held ratio does not match what [-58250, -57850) needs at the current price"
+          ],
+          "status": "SIMULATED",
+          "decreaseLiquidityLive": {
+            "status": "VALID",
+            "detail": "live eth_estimateGas succeeded against current BSC testnet chain state",
+            "gasEstimateWei": "18328000000000"
+          },
+          "collectLive": {
+            "status": "VALID",
+            "detail": "live eth_estimateGas succeeded against current BSC testnet chain state",
+            "gasEstimateWei": "9759200000000"
+          },
+          "ratioFixLive": {
+            "status": "VALID",
+            "detail": "real quote (1287838521119998285 out for 3823372064319496 in) projects clearing the ratio-mismatch threshold",
+            "swapRequirement": {
+              "direction": "SWAP_TOKEN1_FOR_TOKEN0",
+              "amountIn": "3823372064319496",
+              "estimatedAmountOut": "1292186036195741613",
+              "projectedAmount0AfterSwap": "1292186036195741613",
+              "projectedAmount1AfterSwap": "176627935680503",
+              "projectedStrandedFraction0": 8.022838592592248e-15,
+              "projectedStrandedFraction1": 5.661618566436003e-15,
+              "projectedMintExecutable": true,
+              "detail": "closed-form ratio match: swap 3823372064319496 token1 for an estimated 1292186036195741613 token0"
+            },
+            "realQuoteAmountOut": "1287838521119998285",
+            "realQuoteGasEstimateWei": "93465",
+            "projectedAmount0AfterRealSwap": "1287838521119998285",
+            "projectedAmount1AfterRealSwap": "176627935680503",
+            "projectedStrandedFraction0AfterRealSwap": 7.764948660879682e-19,
+            "projectedStrandedFraction1AfterRealSwap": 0.00336446529675768
+          },
+          "mintLive": {
+            "status": "NOT_ATTEMPTED",
+            "detail": "mint's gas/validity depends on token balances and an NFPM approval that only exist after decreaseLiquidity + collect actually execute -- not simulatable against current pre-decrease wallet state without a state-override eth_call (not attempted this slice)."
+          },
+          "liveGasEstimateWei": "28087200000000",
+          "executable": true,
+          "executableReasons": []
+        }
+      }
+    ],
+    "executable": true,
+    "executableReasons": []
+  },
+  "generatedAt": "2026-08-27T03:37:32.277Z"
+}
