@@ -305,6 +305,37 @@ commissioning an audit of VEYRA's own integration code, and a formal decision to
 and Altana/Functor's operational youth (1-month-old project, no bug bounty, not KYC-verified) as
 residual risk -- are business/security decisions, not research questions.
 
+## A credible team response (2026-08-27) -- corroborates, doesn't add new facts
+
+The user posted the project's production-architecture questions to what appears to be an official
+Altana channel and received a reply from (apparently) team handles `@attritoofficial`/`@dorisG_xyz`.
+Applying the same verify-don't-trust standard as the earlier Telegram exchange: this response is a
+meaningfully different quality of source. Point by point:
+
+1. **Relay**: "`relay.altana.network` -- this is our official relay, we operate and host it." Matches
+   exactly the `RELAY_URL` constant in the actual installed `@altananetwork/sdk`'s own shipped
+   config (confirmed earlier this session). Also directly answers "who operates it" -- Altana
+   itself, not a third party.
+2. **KeyStore/KeyStoreController docs**: points to `docs.altana.network/concepts/networks` -- the
+   exact primary source already independently confirmed on-chain in this document. Critically,
+   this response does **not** repeat the earlier bot's fabricated mainnet "Orchestrator" address --
+   it says the missing production contracts "will be added shortly," consistent with this
+   document's own finding that no such address exists in any primary source yet.
+3. **Audit**: cites `skynet.certik.com/projects/altana` (correct -- no `-network` suffix, unlike the
+   earlier bot's 404ing URL) and `docs.altana.network/security/audits` (correct).
+4. **Architecture recommendation for existing NFT positions**: honestly deferred to a named
+   colleague rather than answered speculatively -- still open, and the one item worth following up
+   on directly, since it's the actual architecture-pattern question this whole investigation has
+   been circling.
+5. **Uptime**: "redundancy... 99.99% uptime" -- an unverifiable business claim, neither confirmed
+   nor contradicted by anything independently checked.
+
+**Assessment**: this response gets right exactly what the earlier Telegram exchange got wrong or
+fabricated (the Orchestrator address, the Skynet URL), and honestly defers what it doesn't have a
+ready answer for. That's a real, meaningful difference in reliability, not proof of authenticity on
+its own -- but it corroborates facts already independently established here rather than
+introducing new ones to take on faith. Item 4 remains the genuinely open question.
+
 ## Open items before production
 
 1. ~~Confirm the real mainnet Orchestrator address~~ **Resolved by the frozen Gate 2 closure above:
@@ -316,6 +347,9 @@ residual risk -- are business/security decisions, not research questions.
    acknowledged it, and both addresses independently confirmed on-chain.
 3. Resolve the open question from the Gate 2 review: whether Altana's own relay is built on the
    now-archived `ithacaxyz/relay` reference implementation, or maintained independently.
+   **Partially addressed (2026-08-27)**: the credible team response above confirms Altana itself
+   operates `relay.altana.network` directly (not a third party) -- the specific "built on the
+   archived reference code or not" sub-question remains unanswered.
 4. Wire Gates 1-4 into `orchestrator.ts` -- explicitly not done, and not authorized as part of this
    record.
 5. Report the two disproven claims back to the support channel that provided them. **Done** --
