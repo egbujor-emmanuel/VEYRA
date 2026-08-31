@@ -6,6 +6,8 @@ import { useLiveAgentState } from "../hooks/useLiveAgentState";
 import { fetchLiveGridState } from "../chain/liveReads.gridTrading";
 import { fetchLiveYieldState } from "../chain/liveReads.yieldOptimisation";
 import { fetchLiveHealthFactorState } from "../chain/liveReads.healthFactor";
+import { HirePanel } from "../components/HirePanel";
+import { useConnectedWallet } from "../hooks/walletContext";
 
 const ACTIVATE_DISCLAIMER =
   "Activating enables live monitoring in this browser tab; scheduled autonomous execution is a documented next step, not yet built.";
@@ -132,10 +134,11 @@ function HealthFactorDetail() {
 export function AgentDetail() {
   const { categoryId } = useParams<{ categoryId: string }>();
   const agent = AGENT_CATALOG.find((a) => a.id === categoryId);
+  const wallet = useConnectedWallet();
 
   if (!agent) {
     return (
-      <div className="wrap">
+      <div className="mx-auto w-full max-w-[1180px] px-6 pt-16">
         <p>Unknown category "{categoryId}".</p>
         <Link to="/agents">&larr; Back to the marketplace</Link>
       </div>
@@ -143,12 +146,26 @@ export function AgentDetail() {
   }
 
   return (
-    <div className="wrap">
-      <Link to="/agents">&larr; Back to the marketplace</Link>
-      <h1>{agent.displayName}</h1>
-      <MaturityBadge maturity={agent.maturity} />
-      <p className="subtitle">{agent.longDescription}</p>
+    <div className="mx-auto w-full max-w-[1180px] px-6 pt-10 pb-4">
+      <Link to="/agents" className="text-sm text-muted-foreground no-underline hover:text-foreground">
+        &larr; Back to the marketplace
+      </Link>
+
+      <header className="mt-6 mb-10">
+        <h1 className="text-display text-[clamp(2rem,5vw,3rem)] text-foreground">{agent.displayName}</h1>
+        <div className="mt-4">
+          <MaturityBadge maturity={agent.maturity} />
+        </div>
+        <p className="mt-5 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
+          {agent.longDescription}
+        </p>
+      </header>
+
       {renderDetail(agent.id)}
+
+      {/* The paid rail. Mounted here rather than on the marketplace because a job is funded
+          against one specific agent, and the escrow description records which. */}
+      <HirePanel wallet={wallet} agentName={agent.displayName} />
     </div>
   );
 }

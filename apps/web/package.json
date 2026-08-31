@@ -13,18 +13,25 @@
   },
   "dependencies": {
     "@altananetwork/sdk": "^0.5.1",
+    "@radix-ui/react-slot": "^1.3.3",
     "@veyra/chain": "^0.1.0",
     "@veyra/core": "^0.1.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.38.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.26.0",
+    "tailwind-merge": "^3.6.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.0.0",
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "tailwindcss": "^4.3.3",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vite": "^5.4.0"

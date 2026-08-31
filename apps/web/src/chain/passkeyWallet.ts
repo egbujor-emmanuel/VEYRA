@@ -58,6 +58,11 @@ export async function grantVeyraSession(opts: GrantVeyraSessionOpts): Promise<Us
   return altanaClient().grantSession({
     wallet: opts.wallet,
     signer: opts.wallet.signer,
+    // Ephemeral, NOT registered in the public KeyStore registry. Registration costs ~$0.50 in
+    // native BNB charged by the KeyStoreController -- a brand-new wallet has zero balance, so a
+    // registered grant fails outright. Enforcement is identical either way (permissions and
+    // expiry live in the account); the only thing given up is third-party registry visibility.
+    register: false,
     ...(opts.agentSessionSigner ? { sessionSigner: opts.agentSessionSigner } : {}),
     permissions: {
       calls: [

@@ -9,7 +9,9 @@
     "noEmit": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "baseUrl": ".",
+    "paths": { "@/*": ["src/*"] }
   },
   "include": ["src", "scripts"]
 }
