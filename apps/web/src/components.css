@@ -117,8 +117,7 @@
 
   /* ---- stats ---- */
   .hero-grid,
-  .stat-grid,
-  .metrics {
+  .stat-grid {
     display: grid;
     gap: 14px;
     grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
@@ -389,5 +388,166 @@
 
   a {
     color: var(--color-accent);
+  }
+}
+
+/*
+ * ---------------------------------------------------------------------------------------------
+ * Classes reached only through template literals.
+ *
+ * These were missed when the stylesheet was rewritten: the initial inventory grepped for literal
+ * className="..." and template-literal classNames never matched it. The result was provenance
+ * tags rendering as bare text ("Live State OBSERVED") and winner cards losing their highlight.
+ * Enumerated here from `grep 'className={`'` so the same gap cannot recur silently.
+ * ---------------------------------------------------------------------------------------------
+ */
+@layer components {
+  /* ---- provenance tags: OBSERVED / DERIVED / SUPPLIED / SIMULATED ---- */
+  .tag {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid oklch(1 0 0 / 0.12);
+    background: oklch(1 0 0 / 0.05);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    vertical-align: middle;
+    color: var(--color-muted-foreground);
+  }
+  /* Observed = read from chain. The strongest claim, so the strongest colour. */
+  .tag-observed {
+    border-color: oklch(0.72 0.17 155 / 0.35);
+    background: oklch(0.72 0.17 155 / 0.1);
+    color: var(--color-success);
+  }
+  .tag-derived {
+    border-color: oklch(0.62 0.2 262 / 0.35);
+    background: oklch(0.62 0.2 262 / 0.1);
+    color: var(--color-accent);
+  }
+  .tag-supplied {
+    border-color: oklch(0.78 0.16 78 / 0.32);
+    background: oklch(0.78 0.16 78 / 0.09);
+    color: var(--color-warning);
+  }
+  /* Simulated = not real. Deliberately the least confident-looking of the four. */
+  .tag-simulated {
+    border-style: dashed;
+    color: var(--color-muted-foreground);
+  }
+
+  .status-bad {
+    border-color: oklch(0.64 0.22 25 / 0.35);
+    background: oklch(0.64 0.22 25 / 0.1);
+    color: var(--color-danger);
+  }
+
+  /* The arena's winning proposal card. */
+  .card-winner {
+    border-color: oklch(0.72 0.17 155 / 0.4);
+    box-shadow:
+      0 1px 0 oklch(1 0 0 / 0.06) inset,
+      0 0 0 1px oklch(0.72 0.17 155 / 0.14),
+      0 20px 50px -24px oklch(0 0 0 / 0.8);
+  }
+
+  /* ---- status ticker dots ---- */
+  .dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--color-muted-foreground);
+    flex: none;
+  }
+  .dot-live { background: var(--color-success); box-shadow: 0 0 0 3px oklch(0.72 0.17 155 / 0.18); }
+  .dot-warn { background: var(--color-warning); }
+  .dot-bad { background: var(--color-danger); }
+
+  .state {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--color-success);
+  }
+  .state.off {
+    color: var(--color-muted-foreground);
+  }
+
+  /* ---- the .kv label/value pair ---- */
+  /* .k and .v are spans inside a div; without an explicit block they ran together on one line
+     ("VEYRA Agent#1890", "Owner wallet0x9429…"). */
+  .kv .k,
+  .kv .v {
+    display: block;
+  }
+  .kv .k {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.11em;
+    text-transform: uppercase;
+    color: var(--color-muted-foreground);
+    margin-bottom: 4px;
+  }
+  .kv .v {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-foreground);
+    word-break: break-word;
+  }
+  .kv {
+    align-items: flex-start;
+  }
+
+  /* ---- the metrics table (a real <table>, not a grid) ---- */
+  .metrics {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 4px;
+  }
+  .metrics td {
+    padding: 7px 0;
+    border-bottom: 1px solid oklch(1 0 0 / 0.06);
+    vertical-align: middle;
+  }
+  .metrics tr:last-child td {
+    border-bottom: 0;
+  }
+  .metrics td:first-child {
+    color: var(--color-muted-foreground);
+    padding-right: 16px;
+  }
+  .metrics td:nth-child(2) {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-foreground);
+    padding-right: 16px;
+    white-space: nowrap;
+  }
+  .metrics td:last-child {
+    text-align: right;
+    width: 1%;
+    white-space: nowrap;
+  }
+  .metrics .tag {
+    margin-left: 0;
+  }
+
+  /* Page headings sat flush under the sticky nav with no breathing room. */
+  .wrap > h1:first-child,
+  .wrap > .eyebrow:first-child {
+    margin-top: 28px;
+  }
+  .wrap > h1 {
+    font-size: clamp(26px, 4vw, 38px);
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    margin: 28px 0 10px;
   }
 }
