@@ -13,7 +13,18 @@ import { PANCAKE_V3_TESTNET } from "@veyra/chain/testnetAddresses";
 
 /** Relying-party id for WebAuthn. Must match the site's own domain at runtime. */
 const RP_ID = typeof window !== "undefined" ? window.location.hostname : "localhost";
-const APP_NAME = "VEYRA";
+/**
+ * The label the OS passkey picker shows. It MUST be unique per wallet: the SDK passes this
+ * straight through as the WebAuthn credential label, and a device that has created several
+ * wallets otherwise shows an unpickable list of identical "VEYRA" entries. A real tester hit
+ * exactly that and could not tell which passkey belonged to which wallet.
+ */
+function passkeyLabel(): string {
+  const stamp = new Date().toLocaleString(undefined, {
+    month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
+  });
+  return `VEYRA · ${stamp}`;
+}
 
 export type AltanaClient = ReturnType<typeof createClient>;
 export type UserWallet = Awaited<ReturnType<AltanaClient["createPasskeyWallet"]>>;
@@ -27,7 +38,7 @@ export function altanaClient(): AltanaClient {
 
 /** First-time visitor: one biometric prompt creates a real smart account. */
 export async function createUserWallet(): Promise<UserWallet> {
-  return altanaClient().createPasskeyWallet({ name: APP_NAME, rpId: RP_ID });
+  return altanaClient().createPasskeyWallet({ name: passkeyLabel(), rpId: RP_ID });
 }
 
 /** Returning visitor: rebuilds the same wallet from on-chain state. No stored secret. */
