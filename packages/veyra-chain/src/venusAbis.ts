@@ -31,3 +31,24 @@ export const ERC20_META_ABI = [
   { type: "function", name: "decimals", stateMutability: "view", inputs: [], outputs: [{ type: "uint8" }] },
   { type: "function", name: "symbol", stateMutability: "view", inputs: [], outputs: [{ type: "string" }] },
 ] as const;
+
+/**
+ * Venus write calls. Kept separate from the read ABIs above because these MOVE FUNDS.
+ *
+ * Venus is a Compound fork, so these return a uint256 error code instead of reverting on
+ * business-logic failure -- 0 means success, anything else means the transaction was mined but
+ * did nothing. A receipt with status "success" is therefore NOT proof the repayment happened;
+ * the borrow balance has to be independently re-read afterwards, which is what the health-factor
+ * executor does before it will report an execution as real.
+ */
+export const VTOKEN_WRITE_ABI = [
+  { type: "function", name: "repayBorrow", stateMutability: "nonpayable", inputs: [{ name: "repayAmount", type: "uint256" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "borrow", stateMutability: "nonpayable", inputs: [{ name: "borrowAmount", type: "uint256" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "borrowBalanceStored", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }] },
+] as const;
+
+export const ERC20_APPROVE_ABI = [
+  { type: "function", name: "approve", stateMutability: "nonpayable", inputs: [{ name: "spender", type: "address" }, { name: "value", type: "uint256" }], outputs: [{ type: "bool" }] },
+  { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }] },
+  { type: "function", name: "allowance", stateMutability: "view", inputs: [{ name: "owner", type: "address" }, { name: "spender", type: "address" }], outputs: [{ type: "uint256" }] },
+] as const;

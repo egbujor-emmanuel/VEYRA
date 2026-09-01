@@ -98,7 +98,10 @@ function summarizeCategory(category: string, roundsDirName: string, runsDirName?
       // top-level `status`, not the primary run's `slotOutcomes` array. A predecessor + its
       // resumed completion count as ONE effective executed run, not two, and not zero. Two clean
       // passes -- collect everything first, then decide -- so file iteration order never matters.
-      const primaries: Array<{ runArchiveId?: number; slotOutcomes: Array<{ finalState?: string }> }> = [];
+      // `status` is the category-neutral marker: Grid Trading records per-slot outcomes, but a
+      // category like Health Factor Monitoring has no slots -- one decision, one settlement. Such a
+      // run declares status: "EXECUTED" at the top level instead, and must count.
+      const primaries: Array<{ runArchiveId?: number; status?: string; slotOutcomes: Array<{ finalState?: string }> }> = [];
       const amendments: Array<{ predecessorRunArchiveId: number; status: string }> = [];
       for (const file of files) {
         copyFileSync(resolve(runsDir, file), resolve(publicRunsDir, file));
@@ -106,11 +109,12 @@ function summarizeCategory(category: string, roundsDirName: string, runsDirName?
         if (typeof run.predecessorRunArchiveId === "number") {
           amendments.push({ predecessorRunArchiveId: run.predecessorRunArchiveId, status: run.status });
         } else {
-          primaries.push({ runArchiveId: run.runArchiveId, slotOutcomes: run.slotOutcomes ?? [] });
+          primaries.push({ runArchiveId: run.runArchiveId ?? run.runId, status: run.status, slotOutcomes: run.slotOutcomes ?? [] });
         }
       }
       for (const primary of primaries) {
         const effectiveExecuted =
+          primary.status === "EXECUTED" ||
           primary.slotOutcomes.some((o) => o.finalState === "EXECUTED") ||
           amendments.some((a) => a.predecessorRunArchiveId === primary.runArchiveId && a.status === "EXECUTED");
         if (effectiveExecuted) executedRunCount++;
@@ -186,7 +190,7 @@ function main() {
   const categories = [
     summarizeCategory("grid-trading", "grid-rounds", "grid-runs"),
     summarizeCategory("yield-optimisation", "yield-rounds"),
-    summarizeCategory("health-factor-monitoring", "health-factor-rounds"),
+    summarizeCategory("health-factor-monitoring", "health-factor-rounds", "health-factor-runs"),
   ];
   for (const c of categories) {
     console.log(`Category ${c.category}: ${c.roundCount} rounds, ${c.runCount} runs (${c.executedRunCount} executed), ${c.recommendMigrateOrRepayCount} recommend, ${c.holdCount} hold`);

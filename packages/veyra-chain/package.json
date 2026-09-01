@@ -15,7 +15,9 @@
     "./gridPositionReader": { "types": "./dist/src/gridPositionReader.d.ts", "default": "./dist/src/gridPositionReader.js" },
     "./yieldPositionReader": { "types": "./dist/src/yieldPositionReader.d.ts", "default": "./dist/src/yieldPositionReader.js" },
     "./healthFactorReader": { "types": "./dist/src/healthFactorReader.d.ts", "default": "./dist/src/healthFactorReader.js" },
-    "./venusAbis": { "types": "./dist/src/venusAbis.d.ts", "default": "./dist/src/venusAbis.js" }
+    "./venusAbis": { "types": "./dist/src/venusAbis.d.ts", "default": "./dist/src/venusAbis.js" },
+    "./healthFactorExecutor": { "types": "./dist/src/healthFactorExecutor.d.ts", "default": "./dist/src/healthFactorExecutor.js" },
+    "./txSigner": { "types": "./dist/src/txSigner.d.ts", "default": "./dist/src/txSigner.js" }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

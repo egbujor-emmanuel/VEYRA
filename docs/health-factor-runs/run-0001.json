@@ -1,0 +1,54 @@
+{
+  "runId": 1,
+  "kind": "HEALTH_FACTOR_MONITORING_EXECUTED",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "network": "bsc-testnet",
+  "protocol": "venus",
+  "vToken": "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A",
+  "riskConditionNote": "The elevated risk was created DELIBERATELY, not observed organically. BSC testnet has no borrower whose ratio drifts on its own, so this script borrowed additional USDT against VEYRA's own real Venus collateral to raise the borrow-to-capacity ratio from its long-standing 14% to 74%. Those borrows were made across two earlier invocations of this same script (1.5 -> 6.5 -> 11.5 USDT); by the invocation that produced this record the position was already at 74%, which is why the run itself made no further borrow. What was NOT manufactured: the strategy's 60% warning threshold was never modified, its decision to repay was its own, and the repayment below is a real on-chain settlement verified by re-reading the borrow balance.",
+  "before": {
+    "ratio": 74,
+    "status": "HEALTHY"
+  },
+  "elevated": {
+    "ratio": 74,
+    "status": "HEALTHY"
+  },
+  "after": {
+    "ratio": 0,
+    "status": "NO_BORROW_POSITION"
+  },
+  "decision": {
+    "kind": "recommend-repay",
+    "rationale": "Borrow-to-capacity ratio (74.0%) exceeds the 60% warning threshold -- recommending a repay before real liquidation risk develops. Not executed automatically."
+  },
+  "execution": {
+    "suggestedRepayUnits": "11500000",
+    "actualRepayUnits": "11500000",
+    "borrowBefore": "11500000",
+    "borrowAfter": "0",
+    "repaidAmount": "11500000"
+  },
+  "transactions": [
+    {
+      "step": "approve-underlying-for-repay",
+      "hash": "0xa50f8efad541bc43ae780a084812a73efda16843baef52f756bb45f2eea5ba45",
+      "gasUsed": "46018",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "128531978"
+    },
+    {
+      "step": "repay-borrow",
+      "hash": "0x221c326b5d1231bb24132109cd6e0c4bc3e555b2d8d3bd1618cccfaf84a23167",
+      "gasUsed": "186769",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "128531981"
+    }
+  ],
+  "generatedAt": "2026-09-01T18:04:55.745Z",
+  "startingRatioBeforeAnyBorrowing": 14,
+  "status": "EXECUTED"
+}

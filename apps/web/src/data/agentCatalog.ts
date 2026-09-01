@@ -44,7 +44,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
     displayName: "Health Factor Monitoring",
     shortDescription: "Watches a real Venus Protocol lending position and recommends repayment before risk builds.",
     longDescription:
-      "Reads Venus's own on-chain solvency signal (liquidity/shortfall) for a real, currently-open borrow position, and derives a precisely-labeled borrow-to-capacity ratio -- never called a \"health factor\", since Venus (a Compound fork) doesn't expose Aave's single number. Recommendation-only: repayment is never executed automatically.",
-    maturity: "recommendation-only",
+      "Reads Venus's own on-chain solvency signal (liquidity/shortfall) for a real, currently-open borrow position, and derives a precisely-labeled borrow-to-capacity ratio -- never called a \"health factor\", since Venus (a Compound fork) doesn't expose Aave's single number. When the ratio crosses the 60% warning threshold it executes a real repayBorrow on Venus, verified by re-reading the debt rather than trusting the receipt (a Compound fork returns an error code instead of reverting, so a mined transaction can change nothing).",
+    maturity: "live-executed",
   },
 ];
