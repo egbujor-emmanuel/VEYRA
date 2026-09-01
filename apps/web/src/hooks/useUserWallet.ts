@@ -138,6 +138,18 @@ function describeError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
   const low = raw.toLowerCase();
 
+  // The relay surfaces an out-of-funds userOp as a bare empty revert with no reason string --
+  // literally "Reason: 0x Details: 0x". Verified on BSC testnet: a new wallet's first admin
+  // action carries a mandatory, fee-bearing initialRegisterKey prepend, so an empty wallet
+  // always lands here. Treat it as the funding problem it almost always is, while saying so
+  // rather than asserting it as certain.
+  if (low.includes("reason: 0x") || low.includes("executing calls")) {
+    return (
+      "The transaction was rejected on-chain without a reason. This is almost always an unfunded " +
+      "wallet: your first action also registers your account key with Altana, which charges a fee " +
+      "in BNB. Add some testnet BNB to your address and try again."
+    );
+  }
   if (low.includes("insufficient") || low.includes("exceeds balance") || low.includes("funds")) {
     return (
       "Your wallet needs a small amount of testnet BNB to cover this transaction, and it's currently empty. " +

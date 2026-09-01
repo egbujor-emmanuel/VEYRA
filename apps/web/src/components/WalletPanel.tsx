@@ -3,9 +3,10 @@
 // and grants VEYRA scoped authority over their own funds, with a biometric prompt.
 
 import { useState } from "react";
+import { formatEther } from "viem";
 import { Copy, Check, ExternalLink, Loader2, RotateCw } from "lucide-react";
 import { useWallet } from "../hooks/walletContext";
-import { useNativeBalance } from "../hooks/useNativeBalance";
+import { useWalletFunding } from "../hooks/useNativeBalance";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge, Dot } from "./ui/badge";
@@ -55,7 +56,9 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 export function WalletPanel() {
   const { state, create, recover, grant, revoke } = useWallet();
   const [refreshKey, setRefreshKey] = useState(0);
-  const balance = useNativeBalance(state.status === "ready" ? state.wallet.address : null, refreshKey);
+  const funding = useWalletFunding(state.status === "ready" ? state.wallet.address : null, refreshKey);
+  const balance = funding?.balance ?? null;
+  const underfunded = funding !== null && !funding.sufficient;
 
   return (
     <Card className="p-7">
@@ -117,10 +120,23 @@ export function WalletPanel() {
             </Stat>
           </div>
 
-          {balance?.isEmpty && (
+          {underfunded && (
             <div className="notice-box mb-5">
-              <strong>This wallet is empty.</strong> Authorizing VEYRA is an on-chain transaction, so it needs
-              a little testnet BNB first. Get free tBNB from the{" "}
+              <strong>
+                This wallet needs about {funding!.requirement.requiredFormatted} tBNB before it can authorize
+                anything.
+              </strong>{" "}
+              {funding!.requirement.needsRegistration ? (
+                <>
+                  Your first on-chain action also registers your account key in Altana&apos;s KeyStore, which
+                  charges a live fee of{" "}
+                  <span className="tabular">{formatEther(funding!.requirement.feeWei)}</span> BNB, plus gas.
+                  That is why an empty wallet fails here.
+                </>
+              ) : (
+                <>Your key is already registered; this is just gas for the transaction.</>
+              )}{" "}
+              Get free tBNB from the{" "}
               <a href={FAUCET_URL} target="_blank" rel="noreferrer" className="underline underline-offset-2">
                 BNB Chain faucet <ExternalLink className="inline size-3.5 align-[-2px]" />
               </a>{" "}
@@ -140,9 +156,18 @@ export function WalletPanel() {
                 <span className="text-foreground">one hour</span>. It cannot touch anything else, and you can
                 revoke it at any time.
               </p>
-              <Button onClick={() => grant(DEFAULT_SPEND_LIMIT_WEI, DEFAULT_SESSION_SECONDS)}>
+              <Button
+                disabled={underfunded}
+                onClick={() => grant(DEFAULT_SPEND_LIMIT_WEI, DEFAULT_SESSION_SECONDS)}
+              >
                 Authorize VEYRA
               </Button>
+              {underfunded && (
+                <p className="mt-3 text-[13px] text-muted-foreground">
+                  Disabled until the wallet is funded — clicking it now would fail on-chain with an
+                  unhelpful error.
+                </p>
+              )}
             </>
           ) : (
             <>

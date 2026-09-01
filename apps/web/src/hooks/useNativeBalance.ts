@@ -7,11 +7,50 @@
 import { useEffect, useState } from "react";
 import { formatEther } from "viem";
 import { publicClient } from "../chain/client";
+import { fetchFundingRequirement, type FundingRequirement } from "../chain/keystoreFee";
 
 export interface NativeBalance {
   wei: bigint;
   formatted: string;
   isEmpty: boolean;
+}
+
+/** Balance paired with what this wallet actually needs before its first admin action. */
+export interface WalletFunding {
+  balance: NativeBalance;
+  requirement: FundingRequirement;
+  /** False when the next admin action would revert for lack of funds. */
+  sufficient: boolean;
+}
+
+export function useWalletFunding(address: string | null, refreshKey = 0): WalletFunding | null {
+  const [funding, setFunding] = useState<WalletFunding | null>(null);
+
+  useEffect(() => {
+    if (!address) {
+      setFunding(null);
+      return;
+    }
+    let cancelled = false;
+    const addr = address as `0x${string}`;
+    Promise.all([publicClient.getBalance({ address: addr }), fetchFundingRequirement(addr)])
+      .then(([wei, requirement]) => {
+        if (cancelled) return;
+        setFunding({
+          balance: { wei, formatted: Number(formatEther(wei)).toFixed(4), isEmpty: wei === 0n },
+          requirement,
+          sufficient: wei >= requirement.requiredWei,
+        });
+      })
+      // Never block the UI on this read: if it fails we simply do not gate the button, and the
+      // user gets the (now translated) on-chain error instead of a wrong "you are short" claim.
+      .catch(() => !cancelled && setFunding(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [address, refreshKey]);
+
+  return funding;
 }
 
 export function useNativeBalance(address: string | null, refreshKey = 0): NativeBalance | null {
