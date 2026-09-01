@@ -4,7 +4,7 @@
 // uses server-side.
 
 import { useState } from "react";
-import { hireAgent } from "../chain/hireAgent";
+import { hireAndFund } from "../chain/hireAgent";
 import { VEYRA_WALLET, U_TOKEN_FAUCET_TESTNET } from "../constants";
 import type { UserWallet } from "../chain/passkeyWallet";
 
@@ -17,8 +17,8 @@ const JOB_EXPIRY_SECONDS = 86_400; // 24h before the user can reclaim an undeliv
 
 type HireState =
   | { status: "idle" }
-  | { status: "working" }
-  | { status: "done"; txHash: string | undefined }
+  | { status: "working"; note: string }
+  | { status: "done"; jobId: bigint; txHash: string | undefined }
   | { status: "error"; message: string };
 
 export function HirePanel({ wallet, agentName }: { wallet: UserWallet | null; agentName: string }) {
@@ -27,16 +27,19 @@ export function HirePanel({ wallet, agentName }: { wallet: UserWallet | null; ag
 
   async function submit() {
     if (!wallet) return;
-    setState({ status: "working" });
+    setState({ status: "working", note: "Confirm on your device…" });
     try {
-      const result = await hireAgent({
-        wallet,
-        providerAddress: VEYRA_WALLET,
-        budgetWei: budget.wei,
-        description: `VEYRA · ${agentName}`,
-        expirySeconds: JOB_EXPIRY_SECONDS,
-      });
-      setState({ status: "done", txHash: result.transactionHash });
+      const result = await hireAndFund(
+        {
+          wallet,
+          providerAddress: VEYRA_WALLET,
+          budgetWei: budget.wei,
+          description: `VEYRA · ${agentName}`,
+          expirySeconds: JOB_EXPIRY_SECONDS,
+        },
+        (note) => setState({ status: "working", note }),
+      );
+      setState({ status: "done", jobId: result.jobId, txHash: result.fundTxHash });
     } catch (err) {
       setState({ status: "error", message: err instanceof Error ? err.message : String(err) });
     }
@@ -74,7 +77,7 @@ export function HirePanel({ wallet, agentName }: { wallet: UserWallet | null; ag
 
           {state.status === "done" ? (
             <div className="hero-stat">
-              <span className="k">Job funded</span>
+              <span className="k">Job #{state.jobId.toString()} funded</span>
               <span className="v">
                 {state.txHash ? (
                   <a href={`https://testnet.bscscan.com/tx/${state.txHash}`} target="_blank" rel="noreferrer">{state.txHash.slice(0, 18)}…</a>
@@ -84,9 +87,17 @@ export function HirePanel({ wallet, agentName }: { wallet: UserWallet | null; ag
               </span>
             </div>
           ) : (
-            <button className="btn btn-primary" disabled={state.status === "working"} onClick={submit}>
-              {state.status === "working" ? "Confirm on your device…" : `Hire for ${budget.label}`}
-            </button>
+            <>
+              <button className="btn btn-primary" disabled={state.status === "working"} onClick={submit}>
+                {state.status === "working" ? state.note : `Hire for ${budget.label}`}
+              </button>
+              {state.status === "working" && (
+                <p className="rationale" style={{ marginTop: 12, marginBottom: 0 }}>
+                  This takes two on-chain steps — creating the job, then moving the budget into escrow — so
+                  expect two device prompts.
+                </p>
+              )}
+            </>
           )}
         </>
       )}

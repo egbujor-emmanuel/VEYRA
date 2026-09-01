@@ -6,7 +6,8 @@
 // never creates or funds a job on a user's behalf. ABIs are the real deployed ones, read
 // directly out of @bnbagent/sdk's bundled contract definitions rather than hand-written.
 
-import { encodeFunctionData, type Address } from "viem";
+import { encodeFunctionData, decodeEventLog, type Address, type Log } from "viem";
+import { publicClient } from "./client";
 import { altanaClient, type UserWallet } from "./passkeyWallet";
 import { ERC8183_TESTNET, U_TOKEN_TESTNET } from "../constants";
 
@@ -35,17 +36,67 @@ export const COMMERCE_ABI = [
     inputs: [{ name: "jobId", type: "uint256" }],
     outputs: [],
   },
+  // Provider-side delivery. Note the bytes32 deliverable -- an earlier hand-written version of
+  // this ABI had submit(uint256,bytes), which does not exist on the deployed contract.
+  {
+    type: "function", name: "submit", stateMutability: "nonpayable",
+    inputs: [{ name: "jobId", type: "uint256" }, { name: "deliverable", type: "bytes32" }, { name: "optParams", type: "bytes" }],
+    outputs: [],
+  },
+  {
+    type: "function", name: "jobs", stateMutability: "view",
+    inputs: [{ name: "jobId", type: "uint256" }],
+    outputs: [
+      { name: "id", type: "uint256" }, { name: "client", type: "address" },
+      { name: "provider", type: "address" }, { name: "evaluator", type: "address" },
+      { name: "description", type: "string" }, { name: "expiredAt", type: "uint256" },
+      { name: "budget", type: "uint256" }, { name: "status", type: "uint8" },
+      { name: "hook", type: "address" }, { name: "fundedAt", type: "uint256" },
+      { name: "deliverable", type: "bytes32" },
+    ],
+  },
+  {
+    type: "event", name: "JobCreated",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true }, { name: "client", type: "address", indexed: true },
+      { name: "provider", type: "address", indexed: true }, { name: "evaluator", type: "address", indexed: false },
+      { name: "expiredAt", type: "uint256", indexed: false }, { name: "hook", type: "address", indexed: false },
+    ],
+  },
+  {
+    type: "event", name: "JobFunded",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true }, { name: "client", type: "address", indexed: true },
+      { name: "provider", type: "address", indexed: true }, { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+  {
+    type: "event", name: "Refunded",
+    inputs: [
+      { name: "jobId", type: "uint256", indexed: true }, { name: "client", type: "address", indexed: true },
+      { name: "amount", type: "uint256", indexed: false },
+    ],
+  },
+] as const;
+
+// Settlement lives on the EvaluatorRouter, NOT on Commerce. A previous hand-written version of
+// this file declared settle() on the Commerce ABI; no such function exists there, and calling it
+// would have reverted. Verified against the deployed contracts' own ABIs, extracted from
+// @bnbagent/sdk (scripts/agenticCommerce.abi.json, scripts/evaluatorRouter.abi.json).
+export const ROUTER_ABI = [
+  {
+    type: "function", name: "registerJob", stateMutability: "nonpayable",
+    inputs: [{ name: "jobId", type: "uint256" }, { name: "policy", type: "address" }],
+    outputs: [],
+  },
   {
     type: "function", name: "settle", stateMutability: "nonpayable",
     inputs: [{ name: "jobId", type: "uint256" }, { name: "evidence", type: "bytes" }],
     outputs: [],
   },
-] as const;
-
-export const ROUTER_ABI = [
   {
-    type: "function", name: "registerJob", stateMutability: "nonpayable",
-    inputs: [{ name: "jobId", type: "uint256" }, { name: "policy", type: "address" }],
+    type: "function", name: "markExpired", stateMutability: "nonpayable",
+    inputs: [{ name: "jobId", type: "uint256" }],
     outputs: [],
   },
 ] as const;
@@ -124,4 +175,58 @@ export async function claimRefund(wallet: UserWallet, jobId: bigint) {
     signer: wallet.signer,
     calls: [{ to: ERC8183_TESTNET.commerce, data: encodeFunctionData({ abi: COMMERCE_ABI, functionName: "claimRefund", args: [jobId] }) }],
   });
+}
+
+
+/**
+ * The complete hire: create the job, then register/budget/fund it so the money is actually in
+ * escrow. Split into two on-chain steps because a batch cannot read its own createJob return
+ * value -- the jobId only exists once JobCreated has been emitted, so it must be parsed from the
+ * receipt in between.
+ *
+ * This exists because the UI previously called hireAgent() alone and reported "Job funded". That
+ * was wrong: createJob + approve moves nothing. Verified end-to-end on BSC testnet in
+ * scripts/proveHireFlow.mjs -- the budget only leaves the user's wallet at the fund() step.
+ */
+export async function hireAndFund(
+  opts: HireAgentOpts,
+  onProgress?: (note: string) => void,
+): Promise<{ jobId: bigint; createTxHash?: string; fundTxHash?: string }> {
+  onProgress?.("Creating the job on-chain…");
+  const created = await hireAgent(opts);
+
+  if (!created.transactionHash) {
+    throw new Error("The job-creation transaction did not return a hash, so its jobId cannot be resolved.");
+  }
+
+  onProgress?.("Reading the job id from the receipt…");
+  const receipt = await publicClient.getTransactionReceipt({ hash: created.transactionHash as `0x${string}` });
+  const jobId = resolveJobIdFromReceipt(receipt.logs);
+  if (jobId === undefined) {
+    throw new Error("The job was created but no JobCreated event was found, so it cannot be funded.");
+  }
+
+  onProgress?.(`Job #${jobId} created. Funding the escrow…`);
+  const funded = await fundJob(opts.wallet, jobId, opts.budgetWei);
+
+  return { jobId, createTxHash: created.transactionHash, fundTxHash: funded.transactionHash };
+}
+
+/** Pulls the assigned jobId out of the Commerce contract's own JobCreated event. */
+export function resolveJobIdFromReceipt(logs: readonly Log[]): bigint | undefined {
+  for (const log of logs) {
+    if (log.address.toLowerCase() !== ERC8183_TESTNET.commerce.toLowerCase()) continue;
+    try {
+      const decoded = decodeEventLog({
+        abi: COMMERCE_ABI,
+        eventName: "JobCreated",
+        data: log.data,
+        topics: log.topics,
+      });
+      if (decoded.args && "jobId" in decoded.args) return decoded.args.jobId as bigint;
+    } catch {
+      // Not a JobCreated log -- keep looking.
+    }
+  }
+  return undefined;
 }
