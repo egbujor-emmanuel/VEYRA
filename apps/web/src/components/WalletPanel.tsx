@@ -2,7 +2,7 @@
 // marketplace rather than a display case: a stranger creates their own real smart account here
 // and grants VEYRA scoped authority over their own funds, with a biometric prompt.
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { formatEther } from "viem";
 import { Copy, Check, ExternalLink, Loader2, RotateCw } from "lucide-react";
 import { useWallet } from "../hooks/walletContext";
@@ -16,6 +16,48 @@ const DEFAULT_SESSION_SECONDS = 3600; // 1 hour -- deliberately short; re-grant 
 
 /** BNB Chain's own testnet faucet. A new wallet needs a little tBNB before it can do anything. */
 const FAUCET_URL = "https://www.bnbchain.org/en/testnet-faucet";
+
+/**
+ * Windows 10's platform authenticator cannot store discoverable credentials (resident keys) --
+ * that arrived in Windows 11 22H2. Porto creates credentials with residentKey:"required", so
+ * "this device" is offered by the browser but can never satisfy the request, and the prompt hangs
+ * until it times out. A real tester lost time to this, so say it up front.
+ *
+ * Detection is deliberately NOT done from the UA string: Windows 11 still reports
+ * "Windows NT 10.0" there, so the obvious check flags Win11 users too. The only reliable signal
+ * is the high-entropy platformVersion hint, where a major version >= 13 means Windows 11.
+ * Returns false unless we are confident, so the hint never shows to someone who doesn't need it.
+ */
+function useIsWindows10(): boolean {
+  const [isWin10, setIsWin10] = useState(false);
+
+  useEffect(() => {
+    const uaData = (navigator as Navigator & {
+      userAgentData?: {
+        platform?: string;
+        getHighEntropyValues?: (hints: string[]) => Promise<{ platformVersion?: string }>;
+      };
+    }).userAgentData;
+
+    if (uaData?.platform !== "Windows" || !uaData.getHighEntropyValues) return;
+
+    let cancelled = false;
+    uaData
+      .getHighEntropyValues(["platformVersion"])
+      .then((v) => {
+        if (cancelled) return;
+        const major = Number.parseInt(v.platformVersion?.split(".")[0] ?? "", 10);
+        // >= 13 is Windows 11; 1..12 is Windows 10. NaN means we cannot tell -- stay quiet.
+        if (Number.isFinite(major) && major > 0 && major < 13) setIsWin10(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return isWin10;
+}
 
 function short(addr: string): string {
   return `${addr.slice(0, 6)}…${addr.slice(-4)}`;
@@ -55,6 +97,7 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 
 export function WalletPanel() {
   const { state, create, recover, grant, revoke, disconnect } = useWallet();
+  const isWindows10 = useIsWindows10();
   const [refreshKey, setRefreshKey] = useState(0);
   const funding = useWalletFunding(state.status === "ready" ? state.wallet.address : null, refreshKey);
   const balance = funding?.balance ?? null;
@@ -89,6 +132,14 @@ export function WalletPanel() {
             that wallet has made at least one transaction, because it is rebuilt from on-chain records. A
             wallet you just created is remembered by this browser instead.
           </p>
+          {isWindows10 && (
+            <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+              <strong className="text-foreground">On Windows 10, choose &ldquo;Use a phone or tablet&rdquo;</strong>{" "}
+              when the passkey prompt appears. Windows Hello on Windows 10 cannot store the kind of passkey
+              this needs (a discoverable credential), so picking &ldquo;this device&rdquo; will simply hang
+              until it times out. Windows 11, macOS, Android and iOS are all fine.
+            </p>
+          )}
         </>
       )}
 
