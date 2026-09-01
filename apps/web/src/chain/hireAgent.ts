@@ -49,9 +49,13 @@ export const COMMERCE_ABI = [
     outputs: [
       { name: "id", type: "uint256" }, { name: "client", type: "address" },
       { name: "provider", type: "address" }, { name: "evaluator", type: "address" },
-      { name: "description", type: "string" }, { name: "expiredAt", type: "uint256" },
-      { name: "budget", type: "uint256" }, { name: "status", type: "uint8" },
-      { name: "hook", type: "address" }, { name: "fundedAt", type: "uint256" },
+      // Order matters: ABI decoding is positional, so a swapped pair silently returns a timestamp
+      // where a budget is expected. An earlier hand-written version of this had budget/expiredAt
+      // the wrong way round and fundedAt in place of submittedAt. Verified field-by-field against
+      // the deployed contract's own ABI (scripts/agenticCommerce.abi.json).
+      { name: "description", type: "string" }, { name: "budget", type: "uint256" },
+      { name: "expiredAt", type: "uint256" }, { name: "status", type: "uint8" },
+      { name: "hook", type: "address" }, { name: "submittedAt", type: "uint256" },
       { name: "deliverable", type: "bytes32" },
     ],
   },
