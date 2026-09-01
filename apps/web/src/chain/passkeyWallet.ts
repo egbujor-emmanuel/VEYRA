@@ -8,7 +8,7 @@
 // ("Injected wallet signers (e.g. MetaMask) ... the current build of @altananetwork/sdk doesn't
 // accept them as a signer type").
 
-import { createClient, BNB_TESTNET } from "@altananetwork/sdk";
+import { createClient, BNB_TESTNET, signerFromPasskey } from "@altananetwork/sdk";
 import { PANCAKE_V3_TESTNET } from "@veyra/chain/testnetAddresses";
 
 /** Relying-party id for WebAuthn. Must match the site's own domain at runtime. */
@@ -77,4 +77,60 @@ export async function grantVeyraSession(opts: GrantVeyraSessionOpts): Promise<Us
 
 export async function revokeVeyraSession(wallet: UserWallet, session: UserSession): Promise<void> {
   await altanaClient().revokeSession({ wallet, signer: wallet.signer, session });
+}
+
+
+/*
+ * ---------------------------------------------------------------------------------------------
+ * Local wallet handle.
+ *
+ * This exists to close a real dead window that a tester hit. recoverFromPasskey() rebuilds a
+ * wallet by reading its admin key out of Altana's KeyStore -- but a wallet's KeyStore entry is
+ * only written by initialRegisterKey, which is prepended to its FIRST on-chain action. So
+ * between "wallet created" and "first transaction confirmed", recovery is impossible: the SDK
+ * throws "Picked passkey resolves to wallet 0x..., but that wallet has no keys registered in
+ * KeyStore yet." Reload the page in that window and the wallet is simply gone -- along with any
+ * funds already sent to it.
+ *
+ * A Wallet is only { address }, and a webauthn PasskeyCredential is only { id, publicKey, rpId }.
+ * None of that is secret -- the passkey's private key never leaves the authenticator, and the
+ * credential id is what the browser hands out on every assertion. So persisting the handle
+ * locally is safe, and lets us rebuild the signer with signerFromPasskey() without touching
+ * KeyStore at all.
+ * ---------------------------------------------------------------------------------------------
+ */
+
+const STORAGE_KEY = "veyra.wallet.handle.v1";
+
+export function rememberWallet(wallet: UserWallet): void {
+  const credential = (wallet.signer as { credential?: { kind?: string } }).credential;
+  // Never persist a headless credential -- that variant carries a raw P256 private key. It is
+  // only used by tests, but writing one to localStorage would be a genuine key leak.
+  if (!credential || credential.kind !== "webauthn") return;
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ address: wallet.address, credential }));
+  } catch {
+    // Private browsing / blocked storage. The session still works; only reload-survival is lost.
+  }
+}
+
+/** Rebuilds the wallet handle saved by rememberWallet, or null if there isn't a usable one. */
+export function loadRememberedWallet(): UserWallet | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const { address, credential } = JSON.parse(raw);
+    if (!address || credential?.kind !== "webauthn") return null;
+    return { address, signer: signerFromPasskey(credential) } as UserWallet;
+  } catch {
+    return null;
+  }
+}
+
+export function forgetWallet(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* nothing to do */
+  }
 }

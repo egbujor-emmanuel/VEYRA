@@ -54,7 +54,7 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
 }
 
 export function WalletPanel() {
-  const { state, create, recover, grant, revoke } = useWallet();
+  const { state, create, recover, grant, revoke, disconnect } = useWallet();
   const [refreshKey, setRefreshKey] = useState(0);
   const funding = useWalletFunding(state.status === "ready" ? state.wallet.address : null, refreshKey);
   const balance = funding?.balance ?? null;
@@ -84,6 +84,11 @@ export function WalletPanel() {
               I already have one
             </Button>
           </div>
+          <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
+            &ldquo;I already have one&rdquo; restores a wallet from your passkey on any device — but only once
+            that wallet has made at least one transaction, because it is rebuilt from on-chain records. A
+            wallet you just created is remembered by this browser instead.
+          </p>
         </>
       )}
 
@@ -168,6 +173,14 @@ export function WalletPanel() {
                   unhelpful error.
                 </p>
               )}
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button variant="ghost" size="sm" onClick={() => setRefreshKey((k) => k + 1)}>
+                  <RotateCw /> Refresh balance
+                </Button>
+                <Button variant="ghost" size="sm" onClick={disconnect}>
+                  Use a different wallet
+                </Button>
+              </div>
             </>
           ) : (
             <>
@@ -181,6 +194,9 @@ export function WalletPanel() {
                 </Button>
                 <Button variant="ghost" onClick={() => setRefreshKey((k) => k + 1)}>
                   <RotateCw /> Refresh balance
+                </Button>
+                <Button variant="ghost" onClick={disconnect}>
+                  Use a different wallet
                 </Button>
               </div>
             </>

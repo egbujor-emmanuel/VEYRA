@@ -3,12 +3,15 @@
 // a biometric prompt (recoverFromPasskey), so there is no reason to keep anything client-side
 // that could go stale or leak.
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   createUserWallet,
   recoverUserWallet,
   grantVeyraSession,
   revokeVeyraSession,
+  rememberWallet,
+  loadRememberedWallet,
+  forgetWallet,
   type UserWallet,
   type UserSession,
 } from "../chain/passkeyWallet";
@@ -57,6 +60,14 @@ const GRANT_TIMEOUT_MS = 150_000;
 export function useUserWallet() {
   const [state, setState] = useState<WalletState>({ status: "disconnected" });
 
+  // Restore the wallet handle on load. Without this, reloading the page between creating a
+  // wallet and authorizing it stranded the wallet permanently -- KeyStore-based recovery cannot
+  // see a wallet that has never transacted. See the note in chain/passkeyWallet.ts.
+  useEffect(() => {
+    const remembered = loadRememberedWallet();
+    if (remembered) setState({ status: "ready", wallet: remembered, session: null });
+  }, []);
+
   const run = useCallback(
     async (fn: () => Promise<WalletState>, stages: typeof CREATE_NOTES, timeoutMs: number) => {
       setState({ status: "working", note: stages[0]!.note });
@@ -97,12 +108,30 @@ export function useUserWallet() {
   );
 
   const create = useCallback(
-    () => run(async () => ({ status: "ready", wallet: await createUserWallet(), session: null }), CREATE_NOTES, CREATE_TIMEOUT_MS),
+    () =>
+      run(
+        async () => {
+          const wallet = await createUserWallet();
+          rememberWallet(wallet);
+          return { status: "ready", wallet, session: null };
+        },
+        CREATE_NOTES,
+        CREATE_TIMEOUT_MS,
+      ),
     [run],
   );
 
   const recover = useCallback(
-    () => run(async () => ({ status: "ready", wallet: await recoverUserWallet(), session: null }), CREATE_NOTES, CREATE_TIMEOUT_MS),
+    () =>
+      run(
+        async () => {
+          const wallet = await recoverUserWallet();
+          rememberWallet(wallet);
+          return { status: "ready", wallet, session: null };
+        },
+        CREATE_NOTES,
+        CREATE_TIMEOUT_MS,
+      ),
     [run],
   );
 
@@ -126,7 +155,13 @@ export function useUserWallet() {
     [run, state],
   );
 
-  return { state, create, recover, grant, revoke };
+  /** Forgets the local handle. The wallet itself still exists on-chain and via the passkey. */
+  const disconnect = useCallback(() => {
+    forgetWallet();
+    setState({ status: "disconnected" });
+  }, []);
+
+  return { state, create, recover, grant, revoke, disconnect };
 }
 
 /**
