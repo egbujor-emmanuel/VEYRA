@@ -69,11 +69,16 @@ export async function grantVeyraSession(opts: GrantVeyraSessionOpts): Promise<Us
   return altanaClient().grantSession({
     wallet: opts.wallet,
     signer: opts.wallet.signer,
-    // Ephemeral, NOT registered in the public KeyStore registry. Registration costs ~$0.50 in
-    // native BNB charged by the KeyStoreController -- a brand-new wallet has zero balance, so a
-    // registered grant fails outright. Enforcement is identical either way (permissions and
-    // expiry live in the account); the only thing given up is third-party registry visibility.
-    register: false,
+    // Register the session key in Altana's public KeyStore.
+    //
+    // This was briefly disabled to dodge the registration fee, back when a brand-new wallet had
+    // no balance and a registered grant failed outright. That was the wrong trade: registration
+    // is what makes the session readable on-chain by anyone -- without it the key exists only
+    // inside the account contract, and Altana's own explorer shows nothing. The funding gate now
+    // accounts for the fee up front instead (see chain/keystoreFee.ts), which is the honest fix.
+    //
+    // Enforcement is identical either way; what registration buys is public verifiability.
+    register: true,
     ...(opts.agentSessionSigner ? { sessionSigner: opts.agentSessionSigner } : {}),
     permissions: {
       calls: [

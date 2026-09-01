@@ -194,16 +194,13 @@ export function WalletPanel() {
                 This wallet needs about {funding!.requirement.requiredFormatted} tBNB before it can authorize
                 anything.
               </strong>{" "}
-              {funding!.requirement.needsRegistration ? (
-                <>
-                  Your first on-chain action also registers your account key in Altana&apos;s KeyStore, which
-                  charges a live fee of{" "}
-                  <span className="tabular">{formatEther(funding!.requirement.feeWei)}</span> BNB, plus gas.
-                  That is why an empty wallet fails here.
-                </>
-              ) : (
-                <>Your key is already registered; this is just gas for the transaction.</>
-              )}{" "}
+              Authorizing registers your session key in Altana&apos;s public KeyStore, so the permission you
+              grant is readable on-chain by anyone rather than hidden inside your account. Each registration
+              charges a live fee of{" "}
+              <span className="tabular">{formatEther(funding!.requirement.feeWei)}</span> BNB.{" "}
+              {funding!.requirement.needsRegistration
+                ? "Your first action registers two keys — your account key and the session key — so it costs two fees plus gas."
+                : "Your account key is already registered, so this is one fee plus gas."}{" "}
               Get free tBNB from the{" "}
               <a href={FAUCET_URL} target="_blank" rel="noreferrer" className="underline underline-offset-2">
                 BNB Chain faucet <ExternalLink className="inline size-3.5 align-[-2px]" />

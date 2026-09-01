@@ -7,9 +7,14 @@
 // to do. So a visitor's very first action -- authorizing VEYRA -- carries a hidden funding
 // requirement, and with an empty wallet it reverts with a bare `0x` and no usable explanation.
 //
-// Crucially this happens even with `register: false` on grantSession. That flag only skips the
-// SESSION key's registry entry; the ADMIN key's registration is mandatory and unconditional.
-// Passing register:false is still worth it -- it halves the requirement from two fees to one.
+// The ADMIN key's registration is mandatory and unconditional. On top of that, VEYRA registers
+// the SESSION key too (grantSession register:true), because Altana's bounty requires sessions to
+// be "registered in Keystore, so integration is read onchain" -- an unregistered session exists
+// only inside the account contract and shows up nowhere publicly.
+//
+// So a first grant on a brand-new wallet pays TWO fees: one for the admin key, one for the
+// session key. Later grants pay one. Getting this wrong under-funds the user and reproduces
+// exactly the bare `0x` revert this module exists to prevent.
 //
 // The fee is not a constant. Two reads minutes apart on BSC testnet returned
 // 0.000723947696053108 and 0.000720092991117518 BNB, so it is clearly pegged to a moving price
@@ -51,8 +56,10 @@ const KEYSTORE_ABI = [
 export interface FundingRequirement {
   /** True when the wallet has never registered an admin key, so the fee-bearing prepend applies. */
   needsRegistration: boolean;
-  /** Live registration fee, in wei. Zero when registration has already happened. */
+  /** Live per-key registration fee, in wei. */
   feeWei: bigint;
+  /** How many registrations this grant will pay for: 2 on a first grant, 1 afterwards. */
+  registrationCount: number;
   /** Fee plus gas headroom -- what the wallet must actually hold. */
   requiredWei: bigint;
   /** Human-readable required amount, e.g. "0.0012". */
@@ -73,19 +80,21 @@ export async function fetchFundingRequirement(address: `0x${string}`): Promise<F
 
   const needsRegistration = keys.length === 0;
 
-  const feeWei = needsRegistration
-    ? ((await publicClient.readContract({
-        address: KEYSTORE_CONTROLLER,
-        abi: CONTROLLER_ABI,
-        functionName: "getRegistrationFeeInWei",
-      })) as bigint)
-    : 0n;
+  // Always read the fee: the session key is registered on every grant, not just the first.
+  const feeWei = (await publicClient.readContract({
+    address: KEYSTORE_CONTROLLER,
+    abi: CONTROLLER_ABI,
+    functionName: "getRegistrationFeeInWei",
+  })) as bigint;
 
-  const requiredWei = feeWei + GAS_HEADROOM_WEI;
+  // Admin registration (first grant only) + session registration (every grant).
+  const registrationCount = needsRegistration ? 2 : 1;
+  const requiredWei = feeWei * BigInt(registrationCount) + GAS_HEADROOM_WEI;
 
   return {
     needsRegistration,
     feeWei,
+    registrationCount,
     requiredWei,
     requiredFormatted: Number(formatEther(requiredWei)).toFixed(4),
   };
