@@ -133,12 +133,24 @@ export function WalletPanel() {
             wallet you just created is remembered by this browser instead.
           </p>
           {isWindows10 && (
-            <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-              <strong className="text-foreground">On Windows 10, choose &ldquo;Use a phone or tablet&rdquo;</strong>{" "}
-              when the passkey prompt appears. Windows Hello on Windows 10 cannot store the kind of passkey
-              this needs (a discoverable credential), so picking &ldquo;this device&rdquo; will simply hang
-              until it times out. Windows 11, macOS, Android and iOS are all fine.
-            </p>
+            <div className="notice-box mt-4 text-[13px]">
+              <strong>On Windows 10, not every passkey option will work.</strong> This wallet needs a
+              <em> discoverable</em> passkey, and Windows 10&apos;s built-in Windows Hello store cannot create
+              one (that arrived in Windows 11). At the prompt:
+              <ul className="mt-2 ml-4 list-disc space-y-1">
+                <li>
+                  <strong>Use a phone or tablet</strong> (scan the QR) — always works.
+                </li>
+                <li>
+                  <strong>Google Password Manager</strong> — works too, but only if you have a Windows Hello
+                  PIN set up, since Windows uses it to confirm it&apos;s you.
+                </li>
+                <li>
+                  <strong>&ldquo;This device&rdquo; / Windows Hello</strong> — will hang and time out on
+                  Windows 10. Not your fault, and nothing to fix; just pick one of the two above.
+                </li>
+              </ul>
+            </div>
           )}
         </>
       )}
