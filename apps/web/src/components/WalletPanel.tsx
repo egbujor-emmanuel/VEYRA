@@ -142,8 +142,8 @@ export function WalletPanel() {
                   <strong>Use a phone or tablet</strong> (scan the QR) — always works.
                 </li>
                 <li>
-                  <strong>Google Password Manager</strong> — works too, but only if you have a Windows Hello
-                  PIN set up, since Windows uses it to confirm it&apos;s you.
+                  <strong>Google Password Manager</strong> — on some Windows 10 setups this falls back to
+                  asking for a physical USB security key. If it does, use the phone instead.
                 </li>
                 <li>
                   <strong>&ldquo;This device&rdquo; / Windows Hello</strong> — will hang and time out on
