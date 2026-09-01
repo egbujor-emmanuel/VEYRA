@@ -26,22 +26,26 @@ export interface SigningWallet {
 
 export interface Signer {
   address: Address;
-  /** Build, sign, broadcast, and wait for a transaction. Throws if the receipt's status is not "success". */
-  sendAndWait(step: string, to: Address, data: Hex): Promise<TxRecord>;
+  /**
+   * Build, sign, broadcast, and wait for a transaction. Throws if the receipt's status is not
+   * "success". `value` defaults to 0 -- it is only needed for genuinely payable calls, such as
+   * wrapping native tBNB into WBNB via deposit().
+   */
+  sendAndWait(step: string, to: Address, data: Hex, value?: bigint): Promise<TxRecord>;
 }
 
 export function createSigner(client: PublicClient, wallet: SigningWallet, chainId: number): Signer {
   const address = wallet.address as Address;
 
-  async function sendAndWait(step: string, to: Address, data: Hex): Promise<TxRecord> {
+  async function sendAndWait(step: string, to: Address, data: Hex, value: bigint = 0n): Promise<TxRecord> {
     const [nonce, gasPriceWei, gasEstimate] = await Promise.all([
       client.getTransactionCount({ address, blockTag: "pending" }),
       client.getGasPrice(),
-      client.estimateGas({ account: address, to, data, value: 0n }),
+      client.estimateGas({ account: address, to, data, value }),
     ]);
     const gas = (gasEstimate * GAS_BUFFER_NUMERATOR) / GAS_BUFFER_DENOMINATOR;
 
-    const signed = await wallet.signTransaction({ to, data, value: 0n, gas, gasPrice: gasPriceWei, nonce, chainId });
+    const signed = await wallet.signTransaction({ to, data, value, gas, gasPrice: gasPriceWei, nonce, chainId });
     const hash = await client.sendRawTransaction({ serializedTransaction: signed.rawTransaction });
     const receipt = await client.waitForTransactionReceipt({ hash, timeout: 120_000 });
 

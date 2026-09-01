@@ -36,8 +36,8 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
     displayName: "Yield Optimisation",
     shortDescription: "Compares real, observed fee-growth across pools and recommends where capital should sit.",
     longDescription:
-      "Reads cumulative (all-time) fee-growth-per-liquidity directly from each candidate pool -- a real, observed signal, deliberately not presented as an annualized APR, which this project has no honest way to compute from a single snapshot. Recommendation-only: no funds are ever moved automatically.",
-    maturity: "recommendation-only",
+      "Reads cumulative (all-time) fee-growth-per-liquidity directly from each candidate pool -- a real, observed signal, deliberately not presented as an annualized APR, which this project has no honest way to compute from a single snapshot. When a candidate genuinely outscores the pool capital currently sits in, it executes the migration: withdraw, collect, and redeploy into the better pool. Note the scoring considers fee growth only, not liquidity depth -- a real limitation recorded in the run archive.",
+    maturity: "live-executed",
   },
   {
     id: "health-factor-monitoring",

@@ -189,7 +189,7 @@ function main() {
 
   const categories = [
     summarizeCategory("grid-trading", "grid-rounds", "grid-runs"),
-    summarizeCategory("yield-optimisation", "yield-rounds"),
+    summarizeCategory("yield-optimisation", "yield-rounds", "yield-runs"),
     summarizeCategory("health-factor-monitoring", "health-factor-rounds", "health-factor-runs"),
   ];
   for (const c of categories) {

@@ -1,0 +1,74 @@
+{
+  "runId": 1,
+  "kind": "YIELD_OPTIMISATION_EXECUTED",
+  "status": "EXECUTED",
+  "veyraAgentId": 1890,
+  "ownerWallet": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "network": "bsc-testnet",
+  "opportunityConditionNote": "The candidate pool's advantage was created deliberately, not observed organically. BSC testnet has no trading volume, so the 0.05% pool held zero liquidity and zero fees and could never win. scripts/repairAndSeedPoolB.mjs minted real liquidity there and routed 25 real swaps through it, paying real fees at the pool's real rate, until its cumulative fee-growth score genuinely exceeded the current pool's. The evaluator and its scoring were NOT modified, and the decision below is its own.",
+  "knownLimitation": "The evaluator scores pools on cumulative fee growth alone and does not consider liquidity depth. The candidate pool is thin: during seeding, single large swaps repeatedly drove its price to MIN_TICK. A depth or price-stability term is a real gap this run exposed.",
+  "pools": [
+    {
+      "poolAddress": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+      "label": "VUSD/WBNB 0.25%",
+      "fee": 2500,
+      "score": "568464406296615987923609261068978972"
+    },
+    {
+      "poolAddress": "0x8523c332b034b6D7586116b7739D0048fF1B7888",
+      "label": "VUSD/WBNB 0.05%",
+      "fee": 500,
+      "score": "574246541982651652192959585788447870"
+    }
+  ],
+  "decision": {
+    "kind": "recommend-migrate",
+    "targetPool": "0x8523c332b034b6D7586116b7739D0048fF1B7888",
+    "rationale": "VUSD/WBNB 0.05% (fee 500) shows a higher cumulative fee-growth score than the current pool (VUSD/WBNB 0.25%, fee 2500) -- recommending evaluation of a migration. Not executed automatically."
+  },
+  "execution": {
+    "sourceTokenId": "37140",
+    "sourcePool": "0x61c17A2C050facFdf8651b576Bc898596f5223b9",
+    "sourceLiquidityPulled": "2187256597212285641",
+    "recoveredToken0": "1989742622093919974",
+    "recoveredToken1": "5999999999999999",
+    "targetTokenId": "37141",
+    "targetPool": "0x8523c332b034b6D7586116b7739D0048fF1B7888",
+    "targetLiquidity": "5413976855467466509"
+  },
+  "transactions": [
+    {
+      "step": "mint-yield-position",
+      "hash": "0x165630526a5707a377fcec5ca219745f41628d7180fa1b3143bfa162d1f0bf76",
+      "gasUsed": "466981",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "128536095"
+    },
+    {
+      "step": "decrease-liquidity",
+      "hash": "0x81ecc1f581c80b575f31a760354b5007fad9de3f724870c86dfb289996714ae1",
+      "gasUsed": "149962",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "128536106"
+    },
+    {
+      "step": "collect",
+      "hash": "0x53671453ae8ce10bad682c0c9a98672a6c9abe55bc2e3b4d52f73f06892c569e",
+      "gasUsed": "84493",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "128536114"
+    },
+    {
+      "step": "mint-in-target-pool",
+      "hash": "0x348c128e276c0bee0fc2f89603602108c3c23bf9e9718fae417b7462c7ef87f8",
+      "gasUsed": "462039",
+      "gasPriceWei": "100000000",
+      "status": "success",
+      "blockNumber": "128536138"
+    }
+  ],
+  "generatedAt": "2026-09-01T18:36:06.978Z"
+}
