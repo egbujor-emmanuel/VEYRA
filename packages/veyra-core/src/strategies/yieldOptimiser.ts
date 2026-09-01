@@ -1,6 +1,20 @@
 import { cumulativeFeeGrowthScore, type YieldStrategyFn } from "../yieldSnapshot.js";
 import { VEYRA_AGENT_ID_ON_CHAIN } from "./rangeKeeper.js";
 
+/**
+ * A candidate must hold at least this fraction of the current pool's liquidity, in basis points,
+ * before its fee-growth score is allowed to win.
+ *
+ * Why this gate exists. feeGrowthGlobal is fees PER UNIT OF LIQUIDITY, so a nearly-empty pool
+ * posts a spectacular score off trivial volume -- and is simultaneously the worst place to put
+ * capital, because it cannot absorb a trade. This is not hypothetical: while seeding the testnet
+ * candidate pool (docs/yield-runs/run-0001.json), single 300-VUSD swaps repeatedly drove its
+ * price to MIN_TICK (-887272). Scoring on fee growth alone would happily recommend migrating into
+ * exactly that. 25% is a policy choice, deliberately conservative, in the same spirit as the 60%
+ * threshold in healthFactorMonitor.ts -- not a derived constant.
+ */
+const MIN_RELATIVE_LIQUIDITY_BPS = 2_500n;
+
 export const yieldOptimiserStrategy: YieldStrategyFn = async (_job, snapshot) => {
   const current = snapshot.pools.find((p) => p.poolAddress.toLowerCase() === snapshot.currentPoolAddress.toLowerCase());
   if (!current) throw new Error("yieldOptimiserStrategy: current pool not found in snapshot.pools");
@@ -10,12 +24,22 @@ export const yieldOptimiserStrategy: YieldStrategyFn = async (_job, snapshot) =>
 
   let best: typeof current | null = null;
   let bestScore = currentScore;
+  const rejectedForDepth: string[] = [];
   for (const pool of alternatives) {
     const score = cumulativeFeeGrowthScore(pool);
-    if (score > bestScore) {
-      best = pool;
-      bestScore = score;
+    if (score <= bestScore) continue;
+
+    // Depth gate: a higher score earned on negligible liquidity is not an opportunity.
+    const requiredLiquidity = (current.currentLiquidity * MIN_RELATIVE_LIQUIDITY_BPS) / 10_000n;
+    if (pool.currentLiquidity < requiredLiquidity) {
+      rejectedForDepth.push(
+        `${pool.label} (liquidity ${pool.currentLiquidity} < ${requiredLiquidity} required)`,
+      );
+      continue;
     }
+
+    best = pool;
+    bestScore = score;
   }
 
   if (!best) {
@@ -24,7 +48,10 @@ export const yieldOptimiserStrategy: YieldStrategyFn = async (_job, snapshot) =>
       displayLabel: "Our Agent",
       agentIdOnChain: VEYRA_AGENT_ID_ON_CHAIN,
       proposedAction: { kind: "hold" },
-      rationale: `No candidate pool's cumulative fee-growth score exceeds the current pool (${current.label}, fee ${current.fee}); staying.`,
+      rationale:
+        rejectedForDepth.length > 0
+          ? `A candidate out-scored the current pool (${current.label}, fee ${current.fee}) on cumulative fee growth, but was rejected for insufficient liquidity depth: ${rejectedForDepth.join("; ")}. Fee growth is measured per unit of liquidity, so a nearly-empty pool posts a high score while being unable to absorb a trade; staying.`
+          : `No candidate pool's cumulative fee-growth score exceeds the current pool (${current.label}, fee ${current.fee}); staying.`,
     };
   }
 

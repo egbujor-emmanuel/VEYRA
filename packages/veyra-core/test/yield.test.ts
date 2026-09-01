@@ -114,3 +114,50 @@ test("evaluateYield: exactly one winner, real-data yieldOptimiser beats baseline
   assert.equal(result.scored.filter((s) => s.isWinner).length, 1);
   assert.equal(result.winner.proposal.candidateId, "yield-optimiser-v1");
 });
+
+// ---------- liquidity-depth gate ----------
+// Regression tests for a real defect found during the first live migration
+// (docs/yield-runs/run-0001.json): feeGrowthGlobal is fees PER UNIT OF LIQUIDITY, so a nearly
+// empty pool posts a spectacular score off trivial volume while being the worst possible place
+// to put capital. On testnet, single 300-VUSD swaps drove exactly such a pool to MIN_TICK.
+
+test("yieldOptimiserStrategy: a thin pool does NOT win on fee growth alone -- depth gate holds it back", async () => {
+  const snapshot: YieldMarketSnapshot = {
+    currentPoolAddress: POOL_A,
+    pools: [
+      { poolAddress: POOL_A, label: "0.25% pool", fee: 2500, currentLiquidity: 1_000_000n, feeGrowthGlobal0X128: 100n, feeGrowthGlobal1X128: 100n },
+      // Score is 10x the current pool's, but it holds 1% of the liquidity -- under the 25% floor.
+      { poolAddress: POOL_B, label: "0.05% pool", fee: 500, currentLiquidity: 10_000n, feeGrowthGlobal0X128: 1000n, feeGrowthGlobal1X128: 1000n },
+    ],
+  };
+  const proposal = await yieldOptimiserStrategy(yieldJob(), snapshot);
+  assert.equal(proposal.proposedAction.kind, "hold");
+  assert.match(proposal.rationale, /liquidity depth/i);
+});
+
+test("yieldOptimiserStrategy: the depth gate explains itself rather than silently holding", async () => {
+  const snapshot: YieldMarketSnapshot = {
+    currentPoolAddress: POOL_A,
+    pools: [
+      { poolAddress: POOL_A, label: "0.25% pool", fee: 2500, currentLiquidity: 1_000_000n, feeGrowthGlobal0X128: 100n, feeGrowthGlobal1X128: 100n },
+      { poolAddress: POOL_B, label: "thin pool", fee: 500, currentLiquidity: 1n, feeGrowthGlobal0X128: 9_000n, feeGrowthGlobal1X128: 9_000n },
+    ],
+  };
+  const proposal = await yieldOptimiserStrategy(yieldJob(), snapshot);
+  assert.equal(proposal.proposedAction.kind, "hold");
+  // The operator must be able to tell "nothing better exists" apart from "something scored
+  // better but was too thin to trust" -- these are very different situations.
+  assert.match(proposal.rationale, /thin pool/);
+});
+
+test("yieldOptimiserStrategy: a deep candidate at exactly the 25% floor still wins", async () => {
+  const snapshot: YieldMarketSnapshot = {
+    currentPoolAddress: POOL_A,
+    pools: [
+      { poolAddress: POOL_A, label: "0.25% pool", fee: 2500, currentLiquidity: 1_000_000n, feeGrowthGlobal0X128: 100n, feeGrowthGlobal1X128: 100n },
+      { poolAddress: POOL_B, label: "0.05% pool", fee: 500, currentLiquidity: 250_000n, feeGrowthGlobal0X128: 1000n, feeGrowthGlobal1X128: 1000n },
+    ],
+  };
+  const proposal = await yieldOptimiserStrategy(yieldJob(), snapshot);
+  assert.equal(proposal.proposedAction.kind, "recommend-migrate");
+});
