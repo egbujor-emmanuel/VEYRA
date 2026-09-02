@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { formatUnits } from "viem";
 import { ExternalLink, RotateCw } from "lucide-react";
 import { hireAndFund, readUBalance, claimTestU } from "../chain/hireAgent";
+import { rememberJob } from "../chain/jobStore";
 import { VEYRA_WALLET } from "../constants";
 import type { UserWallet } from "../chain/passkeyWallet";
 
@@ -92,6 +93,15 @@ export function HirePanel({ wallet, agentName }: { wallet: UserWallet | null; ag
         },
         (note) => setState({ status: "working", note }),
       );
+      // Record it locally so the visitor can find it again and reclaim it if VEYRA never
+      // delivers -- historical eth_getLogs is not served by public BSC testnet RPCs.
+      rememberJob({
+        jobId: result.jobId.toString(),
+        agentName,
+        budgetWei: budget.wei.toString(),
+        createdAt: Date.now(),
+        ...(result.fundTxHash ? { fundTxHash: result.fundTxHash } : {}),
+      });
       setState({ status: "done", jobId: result.jobId, txHash: result.fundTxHash });
       refreshBalance();
     } catch (err) {

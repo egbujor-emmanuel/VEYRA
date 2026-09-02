@@ -7,6 +7,7 @@ import { fetchLiveGridState } from "../chain/liveReads.gridTrading";
 import { fetchLiveYieldState } from "../chain/liveReads.yieldOptimisation";
 import { fetchLiveHealthFactorState } from "../chain/liveReads.healthFactor";
 import { HirePanel } from "../components/HirePanel";
+import { JobsPanel } from "../components/JobsPanel";
 import { useConnectedWallet } from "../hooks/walletContext";
 
 const ACTIVATE_DISCLAIMER =
@@ -166,6 +167,9 @@ export function AgentDetail() {
       {/* The paid rail. Mounted here rather than on the marketplace because a job is funded
           against one specific agent, and the escrow description records which. */}
       <HirePanel wallet={wallet} agentName={agent.displayName} />
+
+      {/* Every job this browser has funded, with a reclaim button for anything undelivered. */}
+      <JobsPanel wallet={wallet} />
     </div>
   );
 }

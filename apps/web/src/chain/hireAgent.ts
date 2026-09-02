@@ -291,3 +291,53 @@ async function executeWithNonceRetry<T>(fn: () => Promise<T>, attempts = 4): Pro
     }
   }
 }
+
+
+/** ERC-8183 job status codes, in the contract's own order. */
+export const JOB_STATUS = ["Open", "Funded", "Submitted", "Completed", "Rejected", "Expired"] as const;
+export type JobStatus = (typeof JOB_STATUS)[number];
+
+export interface JobState {
+  jobId: bigint;
+  client: `0x${string}`;
+  provider: `0x${string}`;
+  description: string;
+  budgetWei: bigint;
+  expiredAt: bigint;
+  status: JobStatus;
+  statusCode: number;
+  /** True when claimRefund would currently succeed: past expiry and never delivered. */
+  refundable: boolean;
+}
+
+/**
+ * Reads one job's live state. Field order is load-bearing -- see the note on COMMERCE_ABI's
+ * jobs() outputs; budget and expiredAt sit at [5] and [6] respectively, and swapping them
+ * silently yields a timestamp where a budget belongs.
+ */
+export async function readJob(jobId: bigint): Promise<JobState> {
+  const j = (await publicClient.readContract({
+    address: ERC8183_TESTNET.commerce,
+    abi: COMMERCE_ABI,
+    functionName: "jobs",
+    args: [jobId],
+  })) as readonly [bigint, `0x${string}`, `0x${string}`, `0x${string}`, string, bigint, bigint, number, `0x${string}`, bigint, `0x${string}`];
+
+  const statusCode = Number(j[7]);
+  const nowSecs = BigInt(Math.floor(Date.now() / 1000));
+  // Only an Open or Funded job can be reclaimed, and only once it has expired. A Submitted job
+  // is with the evaluator; a Completed one has already paid out.
+  const refundable = (statusCode === 0 || statusCode === 1) && nowSecs > j[6];
+
+  return {
+    jobId,
+    client: j[1],
+    provider: j[2],
+    description: j[4],
+    budgetWei: j[5],
+    expiredAt: j[6],
+    status: JOB_STATUS[statusCode] ?? "Open",
+    statusCode,
+    refundable,
+  };
+}
