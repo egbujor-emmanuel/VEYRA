@@ -1,0 +1,41 @@
+{
+  "schema": "veyra.delivery.v1",
+  "erc8183JobId": "877",
+  "client": "0xb6f9fD8b1E33613bdc00ff21F22dd43DD46593d0",
+  "provider": "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11",
+  "category": "rebalance",
+  "network": "bsc-testnet",
+  "positionTokenId": "37079",
+  "observedAtBlock": "128552754",
+  "observation": {
+    "currentTick": -58216,
+    "tickLower": -59150,
+    "tickUpper": -57150,
+    "positionLiquidity": "6811320819996921967",
+    "inRange": true
+  },
+  "proposals": [
+    {
+      "candidateId": "rangekeeper-v1",
+      "action": "rebalance",
+      "rationale": "Centered a 2000-tick-wide range on the current tick, widened for recent volatility of 0 bps (risk tolerance: medium).",
+      "totalScore": 75,
+      "isWinner": true
+    },
+    {
+      "candidateId": "baseline-hold",
+      "action": "hold",
+      "rationale": "Keeps the current range unchanged; no rebalance proposed.",
+      "totalScore": 50,
+      "isWinner": false
+    }
+  ],
+  "recommendation": {
+    "candidateId": "rangekeeper-v1",
+    "action": "rebalance",
+    "rationale": "Centered a 2000-tick-wide range on the current tick, widened for recent volatility of 0 bps (risk tolerance: medium)."
+  },
+  "generatedAt": "2026-09-01T20:40:46.401Z",
+  "deliverableHash": "0x68c74e5658b7c46064e1f2bdc98ce739d98af76d5f9b21d8eb6e1da1ccf2e1a2",
+  "canonicalForm": "JSON.stringify with bigints as strings, key order as written"
+}

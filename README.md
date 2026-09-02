@@ -62,6 +62,32 @@ PASS  budget arrived in the escrow contract     commerce +1 $U
 PASS  refund returned the budget to the user    9 -> 10 $U
 ```
 
+### A job delivered and paid, end to end
+
+Job **#877** is a real hire by a real visitor, driven through the whole ERC-8183 lifecycle:
+
+```
+Funded --submit(deliverable)--> Submitted --[15-min dispute window]--> Completed --> provider paid
+```
+
+The deliverable is not a placeholder hash. VEYRA ran its real evaluator against live on-chain
+position state, archived the result to `docs/deliveries/job-877.json`, and committed the
+keccak256 of that exact artifact on-chain. Anyone can re-derive it, with no keys and no
+privileged access:
+
+```bash
+node scripts/verifyDelivery.mjs 877
+```
+
+```
+deliverable on-chain : 0x68c74e5658b7c46064e1f2bdc98ce739d98af76d5f9b21d8eb6e1da1ccf2e1a2
+recomputed from file : 0x68c74e5658b7c46064e1f2bdc98ce739d98af76d5f9b21d8eb6e1da1ccf2e1a2
+artifact self-consistent : YES   matches the chain : YES   job completed : YES
+```
+
+The client's 1 $U left their wallet, sat in escrow, and was released to VEYRA only after the
+dispute window passed without challenge.
+
 ## What is NOT built
 
 Stated here rather than left to be discovered:
@@ -90,6 +116,8 @@ node scripts/proveSessionScope.mjs           # custody: scope enforcement + revo
 node scripts/proveHireFlow.mjs               # escrow: hire, fund, refund
 node scripts/runHealthFactorExecution.mjs    # Venus repayment
 node scripts/runYieldMigration.mjs           # pool migration
+node scripts/deliverJob.mjs 877              # agent delivers a hired job, then settles
+node scripts/verifyDelivery.mjs 877          # re-derive the deliverable hash (no keys needed)
 node scripts/fundTestWallet.mjs 0x<address>  # top up a new tester's wallet
 ```
 
