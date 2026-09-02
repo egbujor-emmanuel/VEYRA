@@ -88,6 +88,18 @@ artifact self-consistent : YES   matches the chain : YES   job completed : YES
 The client's 1 $U left their wallet, sat in escrow, and was released to VEYRA only after the
 dispute window passed without challenge.
 
+### Disputes
+
+If VEYRA delivers something the client considers wrong, the client can dispute it inside the
+15-minute window, which blocks settlement. `scripts/proveDisputePath.mjs` proves that on-chain
+(job **#916**): funded, submitted by VEYRA, then `disputed: false -> true` raised by the client.
+
+**What we cannot do, and do not pretend to:** resolving a dispute requires
+`OptimisticPolicy.voteReject()`, restricted to operator-granted voters. The policy has 2 voters,
+quorum 1, and an admin of `0x1001b2C0…` — BNB's operator, not us. `isVoter(VEYRA)` is `false` and
+`addVoter()` is admin-only. So the rejection-and-refund branch is reachable by the protocol but
+not by this project, and the script stops there rather than simulating an outcome it cannot cause.
+
 ## What is NOT built
 
 Stated here rather than left to be discovered:
@@ -98,6 +110,10 @@ Stated here rather than left to be discovered:
 - **Tasks 3 and 4 in the Advantage Report had their conditions deliberately created**, because BSC
   testnet has no organic borrower drifting into risk and no trading volume. The conditions were
   manufactured; the agents' decisions were not, and the strategies were not modified.
+- **Delivery is operator-triggered.** Hiring an agent funds escrow, but VEYRA does not notice
+  and deliver by itself — `scripts/deliverJob.mjs` is run by hand. This is the same missing
+  backend as above: nothing is watching for new jobs.
+- **The dispute resolution branch is not ours to run** — see Disputes above.
 - **Testnet only.** No mainnet deployment, no real funds.
 
 ## Running it
@@ -118,6 +134,7 @@ node scripts/runHealthFactorExecution.mjs    # Venus repayment
 node scripts/runYieldMigration.mjs           # pool migration
 node scripts/deliverJob.mjs 877              # agent delivers a hired job, then settles
 node scripts/verifyDelivery.mjs 877          # re-derive the deliverable hash (no keys needed)
+node scripts/proveDisputePath.mjs            # client raises a dispute on a submitted job
 node scripts/fundTestWallet.mjs 0x<address>  # top up a new tester's wallet
 ```
 
