@@ -58,13 +58,40 @@ const client = createPublicClient({
 
 const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
 
+/**
+ * Credentials come from the environment when set, falling back to the operator's local files.
+ *
+ * The env path is what lets this run somewhere other than one laptop -- CI secrets, a container,
+ * a server -- without the keystore ever being committed. The file path keeps local development
+ * unchanged.
+ */
 function readWalletPassword() {
+  if (process.env.VEYRA_WALLET_PASSWORD) return process.env.VEYRA_WALLET_PASSWORD;
   const envPath = resolve(REPO, "smoketest/.studio/.env.local");
   for (const line of readFileSync(envPath, "utf-8").split(/\r?\n/)) {
     const t = line.trim();
     if (t.startsWith("WALLET_PASSWORD=")) return t.slice("WALLET_PASSWORD=".length);
   }
-  throw new Error(`WALLET_PASSWORD not found in ${envPath}`);
+  throw new Error("No WALLET_PASSWORD: set VEYRA_WALLET_PASSWORD, or provide smoketest/.studio/.env.local");
+}
+
+/**
+ * Writes the operator keystore and agent session key from environment variables into the paths
+ * the rest of the code reads. Those paths are gitignored, so nothing secret is ever committed --
+ * this only materializes what CI already holds as encrypted secrets.
+ */
+function materializeCredentials() {
+  const dir = resolve(REPO, "smoketest/.studio");
+  if (process.env.VEYRA_KEYSTORE_JSON) {
+    mkdirSync(resolve(dir, "wallets"), { recursive: true });
+    writeFileSync(resolve(dir, `wallets/${VEYRA_WALLET}.json`), process.env.VEYRA_KEYSTORE_JSON);
+    log("operator keystore loaded from environment");
+  }
+  if (process.env.VEYRA_AGENT_SESSION_JSON) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(resolve(dir, "agent-session.json"), process.env.VEYRA_AGENT_SESSION_JSON);
+    log("agent session key loaded from environment");
+  }
 }
 
 function loadState() {
@@ -278,6 +305,8 @@ log("VEYRA agent daemon starting");
 log(`  provider : ${VEYRA_WALLET}`);
 log(`  commerce : ${COMMERCE}`);
 log(`  poll     : every ${POLL_MS / 1000}s`);
+
+materializeCredentials();
 
 const { EVMWalletProvider } = await import("@bnbagent/sdk");
 const signer = createSigner(

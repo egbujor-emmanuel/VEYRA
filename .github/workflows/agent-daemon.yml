@@ -1,0 +1,55 @@
+# Runs VEYRA's agent daemon on a schedule, so hiring the agent works even when nobody is at a
+# keyboard. Previously the daemon was a real process that had to be started by hand, which meant
+# delivery was automatic only while someone happened to be running it.
+#
+# Cron granularity on GitHub Actions is ~5 minutes and scheduled runs can be delayed under load,
+# so this is "checked every few minutes", not "instant". That is honest and adequate: escrow jobs
+# have 24-hour expiries.
+#
+# SETUP -- three repository secrets are required before this does anything:
+#   VEYRA_WALLET_PASSWORD    the operator keystore password
+#   VEYRA_KEYSTORE_JSON      the full contents of the operator's V3 keystore JSON
+#   VEYRA_AGENT_SESSION_JSON the full contents of smoketest/.studio/agent-session.json
+#
+# Set them with:  gh secret set VEYRA_WALLET_PASSWORD
+# Never commit any of these values.
+
+name: VEYRA agent daemon
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+# Two runs writing the same job on-chain would waste gas and could double-submit.
+concurrency:
+  group: veyra-agent-daemon
+  cancel-in-progress: false
+
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run build --workspace @veyra/core && npm run build --workspace @veyra/chain
+
+      - name: Deliver any funded jobs
+        env:
+          VEYRA_WALLET_PASSWORD: ${{ secrets.VEYRA_WALLET_PASSWORD }}
+          VEYRA_KEYSTORE_JSON: ${{ secrets.VEYRA_KEYSTORE_JSON }}
+          VEYRA_AGENT_SESSION_JSON: ${{ secrets.VEYRA_AGENT_SESSION_JSON }}
+        run: |
+          if [ -z "$VEYRA_WALLET_PASSWORD" ]; then
+            echo "::warning::Daemon secrets are not configured; skipping. See this file's header."
+            exit 0
+          fi
+          node services/agent-daemon/index.mjs --once

@@ -135,6 +135,16 @@ It holds VEYRA's own operator key and uses it for exactly one thing: submitting 
 jobs where VEYRA is the provider. It settles Router-evaluated jobs once their dispute window
 closes, and never settles a client-evaluated one — that decision belongs to the client.
 
+**It is hosted.** `.github/workflows/agent-daemon.yml` runs it on a schedule, so hiring works with
+nobody at a keyboard. Credentials come from repository secrets
+(`VEYRA_WALLET_PASSWORD`, `VEYRA_KEYSTORE_JSON`, `VEYRA_AGENT_SESSION_JSON`) — the keystore is
+never committed, and the workflow skips with a warning rather than failing if they are unset.
+Cron granularity is ~10 minutes and scheduled runs can be delayed under load, so this is "checked
+every few minutes", not instant — which is fine against 24-hour job expiries.
+
+Verified end to end: the daemon discovered jobs #924 and #939 on its own, delivered both, then on
+a later pass settled #924 once its dispute window closed — `Completed`, and VEYRA was paid.
+
 ### VEYRA acts while you are away
 
 Authorizing VEYRA delegates to its **permanent agent session key**, whose private half lives with
@@ -169,9 +179,6 @@ Stated here rather than left to be discovered:
 - **Tasks 3 and 4 in the Advantage Report had their conditions deliberately created**, because BSC
   testnet has no organic borrower drifting into risk and no trading volume. The conditions were
   manufactured; the agents' decisions were not, and the strategies were not modified.
-- **The daemon is not hosted.** It is a real process that must be running somewhere; the
-  marketplace itself is a static site. Nobody is running it 24/7, so delivery is automatic only
-  while it is up.
 - **Testnet only.** No mainnet deployment, no real funds.
 
 ## Running it
