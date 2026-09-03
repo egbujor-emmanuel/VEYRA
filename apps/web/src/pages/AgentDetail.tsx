@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { AGENT_CATALOG, type JobCategory } from "../data/agentCatalog";
 import { MaturityBadge } from "../components/MaturityBadge";
+import { AgentTrackRecord } from "../components/AgentTrackRecord";
 import { useLiveAgentState } from "../hooks/useLiveAgentState";
 import { fetchLiveGridState } from "../chain/liveReads.gridTrading";
 import { fetchLiveYieldState } from "../chain/liveReads.yieldOptimisation";
@@ -180,6 +181,7 @@ export function AgentDetail() {
         <p className="mt-5 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
           {agent.longDescription}
         </p>
+        <AgentTrackRecord category={agent.id} />
       </header>
 
       {renderDetail(agent.id)}

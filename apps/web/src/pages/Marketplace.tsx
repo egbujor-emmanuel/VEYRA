@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Fingerprint, ShieldCheck, Timer } from "lucide-react";
 import { AGENT_CATALOG } from "../data/agentCatalog";
 import { MaturityBadge } from "../components/MaturityBadge";
+import { AgentTrackRecord } from "../components/AgentTrackRecord";
 import { StatusTicker } from "../components/StatusTicker";
 import { WalletPanel } from "../components/WalletPanel";
 import { DepositPanel } from "../components/DepositPanel";
@@ -81,7 +82,8 @@ export function Marketplace() {
             <div>
               <h2 className="text-display text-[26px] text-foreground">Available agents</h2>
               <p className="mt-1.5 text-sm text-muted-foreground">
-                Badges below state exactly what each agent has really done on-chain — not what it could do.
+                Every figure below is computed from that agent&apos;s own archived runs — real transactions,
+                real gas, real decisions. Including the ones that failed.
               </p>
             </div>
           </div>
@@ -100,6 +102,9 @@ export function Marketplace() {
                   <div className="mt-5">
                     <MaturityBadge maturity={agent.maturity} />
                   </div>
+                  {/* Real numbers from this agent's own archives -- the difference between a
+                      catalogue entry and something a visitor can actually choose between. */}
+                  <AgentTrackRecord category={agent.id} />
                 </Card>
               </Link>
             ))}

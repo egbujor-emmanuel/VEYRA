@@ -34,7 +34,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
   {
     id: "yield-optimisation",
     displayName: "Yield Optimisation",
-    shortDescription: "Compares real, observed fee-growth across pools and recommends where capital should sit.",
+    shortDescription: "Compares fee-growth across real PancakeSwap pools and moves capital to the better one.",
     longDescription:
       "Reads cumulative (all-time) fee-growth-per-liquidity directly from each candidate pool -- a real, observed signal, deliberately not presented as an annualized APR, which this project has no honest way to compute from a single snapshot. When a candidate genuinely outscores the pool capital currently sits in, it executes the migration: withdraw, collect, and redeploy into the better pool. Fee growth is measured per unit of liquidity, so a nearly-empty pool can post a high score while being unable to absorb a trade; a depth gate rejects any candidate holding under 25% of the current pool's liquidity, and says so rather than holding silently.",
     maturity: "live-executed",
@@ -42,7 +42,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
   {
     id: "health-factor-monitoring",
     displayName: "Health Factor Monitoring",
-    shortDescription: "Watches a real Venus Protocol lending position and recommends repayment before risk builds.",
+    shortDescription: "Watches a real Venus lending position and repays it before liquidation risk develops.",
     longDescription:
       "Reads Venus's own on-chain solvency signal (liquidity/shortfall) for a real, currently-open borrow position, and derives a precisely-labeled borrow-to-capacity ratio -- never called a \"health factor\", since Venus (a Compound fork) doesn't expose Aave's single number. When the ratio crosses the 60% warning threshold it executes a real repayBorrow on Venus, verified by re-reading the debt rather than trusting the receipt (a Compound fork returns an error code instead of reverting, so a mined transaction can change nothing).",
     maturity: "live-executed",
