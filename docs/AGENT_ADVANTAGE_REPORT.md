@@ -130,11 +130,23 @@ and a passive holder has no equivalent.
 
 Verified by re-reading the borrow balance: `11500000 → 0` (6-decimal USDT).
 
-**Condition disclosure:** BSC testnet has no borrower whose ratio drifts on its own, so the
-elevated risk was created deliberately — VEYRA borrowed additional USDT against its own real
-collateral, moving the ratio from a long-standing 14% to 74%. **The 60% threshold was not
-modified and the decision to repay was the strategy's own**; the runner aborts if it returns
-anything else. Full disclosure is in `docs/health-factor-runs/run-0001.json`.
+**Condition disclosure, with the measurements behind it.** The elevated risk was created
+deliberately, and on this chain it had to be. The two mechanisms that would move a healthy
+position into danger unaided are both inert on BSC testnet, verified on-chain 2026-09-03:
+
+| Mechanism | Measured |
+|---|---|
+| Borrow interest on USDT | `vUSDT.borrowRatePerBlock` = **0** → 0.00% APY, the debt never grows |
+| Collateral repricing | Venus oracle returns **static constants**, not a live feed |
+
+Switching the borrow to vBNB (7.54% APY) does not help: from 59.9%, interest alone needs about
+**19 days** to reach 60%. So VEYRA borrowed additional USDT against its own real collateral,
+moving the ratio 14% → 74%.
+
+**Real:** the borrow, the debt, the 74% ratio, the repayment, and its verification.
+**Not organic:** only that we caused the risk rather than waiting for it. The 60% threshold was
+never modified and the runner aborts if the strategy returns anything but a repay. Full
+disclosure in `docs/health-factor-runs/run-0001.json`.
 
 **Why this measurement is trustworthy:** Venus is a Compound fork — `repayBorrow` returns an error
 code instead of reverting, so a transaction can be mined "successfully" and change nothing. The
@@ -166,10 +178,23 @@ executor re-reads the debt after every operation and reports the delta, never th
 Position **#37140** (pool A) drained to zero liquidity; **#37141** minted in pool B with
 liquidity 5,413,976,855,467,466,509. Recovered and redeployed 1.9897 VUSD + 0.006 WBNB.
 
-**Condition disclosure:** the candidate pool had zero liquidity and zero fees, so it could never
-win. Real liquidity was minted there and 25 real swaps routed through it, paying real fees at the
-pool's real rate, until its score genuinely exceeded pool A's. **The evaluator and its scoring
-were not modified.**
+**No longer applicable — this task now runs on organic data.** At the time of this migration the
+agent compared our own VUSD/WBNB pools, and the candidate had zero liquidity and zero fees until
+we seeded it, which made its recommendation a response to a condition we had created.
+
+It now reads **real PancakeSwap V3 testnet pools whose fee growth was accumulated entirely by
+third-party traders** — verified on-chain to hold real liquidity and non-zero cumulative fee
+growth before use:
+
+| Pool | Liquidity | Fee-growth score |
+|---|---|---|
+| WBNB/CAKE 0.05% (current) | 12,129e18 | 7.40e45 |
+| WBNB/CAKE 0.25% | 3,761e18 | 1.45e55 |
+| WBNB/BUSD 0.25% | 34,382e18 | 1.48e50 |
+
+Run against those, the unmodified agent returns `recommend-migrate` on trading history it had no
+hand in producing. The transactions below remain the record of the executed migration on the
+earlier, seeded pools; the seeding is disclosed rather than removed.
 
 **Defect found by this run, since fixed:** at the time of this migration the evaluator scored
 cumulative fee growth alone and **ignored liquidity depth**. Fee growth is measured *per unit of

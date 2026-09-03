@@ -21,10 +21,26 @@ export const BSCSCAN_TESTNET_TX_BASE = "https://testnet.bscscan.com/tx/";
 export const GRID_TRADING_POOL_ADDRESS = "0x61c17A2C050facFdf8651b576Bc898596f5223b9" as const;
 export const GRID_POSITION_TOKEN_IDS = [37091n, 37093n] as const;
 
-// ---- Yield Optimisation: the real pool VEYRA's capital sits in, plus a real, freshly
-// initialized 0.05% sibling pool minted this session as a genuine second candidate ----
-export const YIELD_CURRENT_POOL = { poolAddress: "0x61c17A2C050facFdf8651b576Bc898596f5223b9" as const, label: "VUSD/WBNB 0.25%", fee: 2500 };
-export const YIELD_CANDIDATE_POOLS = [{ poolAddress: "0x8523c332b034b6D7586116b7739D0048fF1B7888" as const, label: "VUSD/WBNB 0.05%", fee: 500 }];
+// ---- Yield Optimisation: REAL PancakeSwap V3 testnet pools, with organic trading history ----
+//
+// These are not ours. They are live PancakeSwap testnet pools whose fee growth was accumulated by
+// third-party traders, and every address here was verified on-chain to hold real liquidity and a
+// non-zero cumulative fee-growth score before being used.
+//
+// This replaces an earlier setup that pointed at our own VUSD/WBNB pools, where the candidate had
+// zero liquidity and zero fees until we seeded it ourselves. That made the agent's recommendation
+// a response to a condition we had created. Reading real pools removes the manufacturing entirely:
+// the agent now compares trading history it had no hand in producing.
+//
+// Observed 2026-09-03:
+//   WBNB/CAKE 0.05%   liquidity 12,129e18   score 7.40e45   <- current
+//   WBNB/CAKE 0.25%   liquidity  3,761e18   score 1.45e55
+//   WBNB/BUSD 0.25%   liquidity 34,382e18   score 1.48e50
+export const YIELD_CURRENT_POOL = { poolAddress: "0xeaf78e3AA2C19dF9495318Cd9EA2aD83Be7D5015" as const, label: "WBNB/CAKE 0.05%", fee: 500 };
+export const YIELD_CANDIDATE_POOLS = [
+  { poolAddress: "0x1066a98a0cFd1e24bA565274b43881A92aDC4fd1" as const, label: "WBNB/CAKE 0.25%", fee: 2500 },
+  { poolAddress: "0xCbb1A7c864e5eBEF28E8570357dD316002666992" as const, label: "WBNB/BUSD 0.25%", fee: 2500 },
+];
 
 // ---- ERC-8183 job escrow (the paid-hire rail) ----
 // Addresses come from @bnbagent/sdk's own bsc-testnet network config and were each independently

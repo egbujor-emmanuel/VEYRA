@@ -203,9 +203,19 @@ not touch WBNB.
 
 Stated here rather than left to be discovered:
 
-- **Tasks 3 and 4 in the Advantage Report had their conditions deliberately created**, because BSC
-  testnet has no organic borrower drifting into risk and no trading volume. The conditions were
-  manufactured; the agents' decisions were not, and the strategies were not modified.
+- **Health Factor's trigger was operator-initiated, and on this chain it has to be.** Two
+  mechanisms could move a healthy Venus position into danger on its own, and both are inert on
+  BSC testnet: `vUSDT.borrowRatePerBlock` reads **0**, so the debt never grows, and the Venus
+  oracle returns **static constants**, so collateral value never moves. Nothing there can carry a
+  position across a risk threshold, ever. Switching to vBNB (7.54% APY) does not rescue it either
+  — starting at 59.9%, interest alone would need roughly **19 days** to cross 60%.
+
+  So the risk was created deliberately: VEYRA borrowed more USDT against its own real collateral,
+  moving the ratio 14% → 74%. **What was real:** the borrow, the debt, the 74% ratio, the
+  `repayBorrow`, and the verification (the debt is re-read afterwards rather than trusting the
+  receipt). **What was not organic:** only that we caused the risk instead of waiting for it,
+  because waiting produces nothing here. The 60% threshold was never modified and the runner
+  aborts if the strategy returns anything but a repay.
 - **Testnet only.** No mainnet deployment, no real funds.
 
 ## Running it
