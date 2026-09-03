@@ -6,9 +6,9 @@
 // refund guarantee.
 
 import { useCallback, useEffect, useState } from "react";
-import { formatUnits } from "viem";
+import { formatUnits, keccak256, toHex } from "viem";
 import { ExternalLink, RotateCw } from "lucide-react";
-import { claimRefund, readJob, type JobState } from "../chain/hireAgent";
+import { claimRefund, readJob, rejectDelivery, acceptDelivery, type JobState } from "../chain/hireAgent";
 import { loadJobs } from "../chain/jobStore";
 import type { UserWallet } from "../chain/passkeyWallet";
 
@@ -49,6 +49,37 @@ export function JobsPanel({ wallet }: { wallet: UserWallet | null }) {
     void refresh();
   }, [refresh]);
 
+  /**
+   * Accept or reject a submitted deliverable. Only the job's evaluator may do this, and for jobs
+   * created by this app the evaluator IS the client -- so the person who paid decides, and a
+   * rejection refunds them immediately rather than making them wait out the expiry.
+   */
+  async function decide(jobId: string, accept: boolean) {
+    if (!wallet) return;
+    setBusyJobId(jobId);
+    setMessage(null);
+    const reason = keccak256(toHex(accept ? "accepted-by-client" : "rejected-by-client"));
+    try {
+      if (accept) await acceptDelivery(wallet, BigInt(jobId), reason);
+      else await rejectDelivery(wallet, BigInt(jobId), reason);
+      setMessage(
+        accept
+          ? `Job #${jobId} accepted — the budget has been released to VEYRA.`
+          : `Job #${jobId} rejected — your budget has been returned in full.`,
+      );
+      await refresh();
+    } catch (err) {
+      const raw = err instanceof Error ? err.message : String(err);
+      setMessage(
+        /reason: 0x|executing calls/i.test(raw)
+          ? `The contract refused that without a reason. Only the job's evaluator can decide, and only while it is Submitted.`
+          : raw,
+      );
+    } finally {
+      setBusyJobId(null);
+    }
+  }
+
   async function reclaim(jobId: string) {
     if (!wallet) return;
     setBusyJobId(jobId);
@@ -76,8 +107,9 @@ export function JobsPanel({ wallet }: { wallet: UserWallet | null }) {
     <div className="panel">
       <h2>Your jobs</h2>
       <p className="rationale">
-        Jobs you have funded from this browser. A job that passes its expiry without being delivered can be
-        reclaimed in full — the escrow releases to VEYRA only after it delivers and the dispute window closes.
+        Jobs you have funded from this browser. <strong>You are the evaluator on every job you create here</strong> —
+        when VEYRA submits its work you decide whether to accept it and release payment, or reject it and be
+        refunded in full. A job that passes its expiry undelivered can be reclaimed outright.
       </p>
 
       {message && <div className="notice-box" style={{ marginBottom: 16 }}>{message}</div>}
@@ -101,6 +133,24 @@ export function JobsPanel({ wallet }: { wallet: UserWallet | null }) {
 
               <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
                 <span className={`status-pill ${statusVariant(state)}`}>{state?.status ?? "unknown"}</span>
+                {state?.status === "Submitted" && (
+                  <>
+                    <button
+                      className="btn btn-accent"
+                      disabled={!wallet || busyJobId === stored.jobId}
+                      onClick={() => decide(stored.jobId, true)}
+                    >
+                      {busyJobId === stored.jobId ? "Working…" : "Accept & pay"}
+                    </button>
+                    <button
+                      className="btn btn-secondary"
+                      disabled={!wallet || busyJobId === stored.jobId}
+                      onClick={() => decide(stored.jobId, false)}
+                    >
+                      Reject & refund
+                    </button>
+                  </>
+                )}
                 {state?.refundable && (
                   <button
                     className="btn btn-secondary"

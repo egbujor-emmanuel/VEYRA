@@ -1,0 +1,309 @@
+// VEYRA's agent daemon: the piece that makes hiring actually mean something.
+//
+// Before this, hiring VEYRA funded an escrow and then nothing happened. Delivery required an
+// operator to run scripts/deliverJob.mjs by hand, so the marketplace could take money while the
+// agent sat idle. This process watches the chain for jobs where VEYRA is the provider, does the
+// work, and submits the deliverable -- unattended.
+//
+// Discovery without event logs
+// ----------------------------
+// The obvious approach is a JobCreated log filter. It does not work here: every public BSC
+// testnet RPC tested refuses eth_getLogs over historical ranges ("Request exceeds defined limit"),
+// and some refuse even 100-block windows. So this walks job IDs directly instead. jobCounter()
+// gives the upper bound, a persisted cursor gives the lower one, and each new id is read with
+// jobs(id). Direct reads are served reliably where logs are not.
+//
+// What it will and will not do
+// ----------------------------
+// It holds VEYRA's own operator key, and uses it for exactly one thing: submitting deliverables
+// for jobs that name VEYRA as provider. It does NOT hold any user's session key and cannot touch
+// a user's position -- that remains browser-side, and is called out as unbuilt in the README.
+//
+// It never settles a client-evaluated job. Payment is released by the client accepting the work,
+// or refunded by them rejecting it. Deciding on its own behalf would defeat the point.
+
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { createPublicClient, http, encodeFunctionData, keccak256, toHex, formatUnits } from "viem";
+import { evaluateV2, rangeKeeperStrategy, baselineHoldStrategy } from "@veyra/core";
+import { readPositionObservation, toMarketSnapshot } from "@veyra/chain/positionReader";
+import { createSigner } from "@veyra/chain/txSigner";
+import { PANCAKE_V3_TESTNET } from "@veyra/chain/testnetAddresses";
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const REPO = resolve(HERE, "../..");
+const RPC = process.env.VEYRA_RPC ?? "https://bsc-testnet-rpc.publicnode.com";
+const CHAIN_ID = 97;
+const POLL_MS = Number(process.env.VEYRA_POLL_MS ?? 30_000);
+/** How far back to look on a cold start, so a fresh daemon still picks up recent work. */
+const COLD_START_LOOKBACK = Number(process.env.VEYRA_LOOKBACK ?? 40);
+
+const VEYRA_WALLET = "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11";
+const COMMERCE = "0xa206c0517b6371c6638cd9e4a42cc9f02a33b0de";
+const POSITION_TOKEN_ID = 37079n;
+const STATE_PATH = resolve(HERE, ".state.json");
+const DELIVERY_DIR = resolve(REPO, "docs/deliveries");
+
+const COMMERCE_ABI = JSON.parse(readFileSync(resolve(REPO, "scripts/agenticCommerce.abi.json"), "utf-8"));
+const ROUTER_ABI = JSON.parse(readFileSync(resolve(REPO, "scripts/evaluatorRouter.abi.json"), "utf-8"));
+const POLICY_ABI = JSON.parse(readFileSync(resolve(REPO, "scripts/optimisticPolicy.abi.json"), "utf-8"));
+const ROUTER = "0xd7d36d66d2f1b608a0f943f722d27e3744f66f25";
+const STATUS = ["Open", "Funded", "Submitted", "Completed", "Rejected", "Expired"];
+
+const client = createPublicClient({
+  chain: { id: CHAIN_ID, name: "bsc-testnet", nativeCurrency: { name: "tBNB", symbol: "tBNB", decimals: 18 }, rpcUrls: { default: { http: [RPC] } } },
+  transport: http(RPC, { timeout: 60_000, retryCount: 5, retryDelay: 1_500 }),
+});
+
+const log = (...a) => console.log(`[${new Date().toISOString()}]`, ...a);
+
+function readWalletPassword() {
+  const envPath = resolve(REPO, "smoketest/.studio/.env.local");
+  for (const line of readFileSync(envPath, "utf-8").split(/\r?\n/)) {
+    const t = line.trim();
+    if (t.startsWith("WALLET_PASSWORD=")) return t.slice("WALLET_PASSWORD=".length);
+  }
+  throw new Error(`WALLET_PASSWORD not found in ${envPath}`);
+}
+
+function loadState() {
+  if (!existsSync(STATE_PATH)) return { cursor: null, handled: [], pending: [] };
+  try {
+    const parsed = JSON.parse(readFileSync(STATE_PATH, "utf-8"));
+    return { cursor: parsed.cursor ?? null, handled: parsed.handled ?? [], pending: parsed.pending ?? [] };
+  } catch {
+    // A corrupt state file must not wedge the daemon; losing the cursor only means re-scanning.
+    return { cursor: null, handled: [], pending: [] };
+  }
+}
+const saveState = (s) => writeFileSync(STATE_PATH, JSON.stringify(s, null, 2));
+
+/** Produces the real deliverable: a live evaluation, archived, hashed. */
+async function buildDeliverable(jobId, job) {
+  const observation = await readPositionObservation(client, POSITION_TOKEN_ID, PANCAKE_V3_TESTNET.nonfungiblePositionManager);
+  const snapshot = toMarketSnapshot(observation, { recentVolatilityBps: 0 });
+
+  const evaluationJob = {
+    jobId: `erc8183-${jobId}`,
+    createdAt: new Date().toISOString(),
+    ownerWallet: job[1],
+    category: "rebalance",
+    target: { protocol: "pancakeswap-v3", network: "bsc-testnet", positionTokenId: Number(POSITION_TOKEN_ID) },
+    constraints: { maxSpendWei: "10000000000000000", maxSlippageBps: 100, riskTolerance: "medium", deadlineSeconds: 600 },
+    budget: { currency: "U", amountWei: job[5].toString() },
+    status: "evaluating",
+    erc8183JobId: jobId.toString(),
+  };
+
+  const proposals = await Promise.all([rangeKeeperStrategy, baselineHoldStrategy].map((fn) => fn(evaluationJob, snapshot)));
+  const round = evaluateV2(evaluationJob, snapshot, proposals);
+  const winner = round.winner;
+
+  const bigintSafe = (_k, v) => (typeof v === "bigint" ? v.toString() : v);
+  const artifact = {
+    schema: "veyra.delivery.v1",
+    erc8183JobId: jobId.toString(),
+    client: job[1],
+    provider: VEYRA_WALLET,
+    category: "rebalance",
+    network: "bsc-testnet",
+    positionTokenId: POSITION_TOKEN_ID.toString(),
+    observedAtBlock: (await client.getBlockNumber()).toString(),
+    observation: {
+      currentTick: observation.currentTick,
+      tickLower: observation.tickLower,
+      tickUpper: observation.tickUpper,
+      positionLiquidity: String(observation.positionLiquidity),
+      inRange: observation.currentTick >= observation.tickLower && observation.currentTick < observation.tickUpper,
+    },
+    proposals: round.scored.map((s) => ({
+      candidateId: s.proposal.candidateId,
+      action: s.proposal.proposedAction.kind,
+      rationale: s.proposal.rationale,
+      totalScore: s.score?.totalScore ?? null,
+      isWinner: s.isWinner,
+    })),
+    recommendation: {
+      candidateId: winner.proposal.candidateId,
+      action: winner.proposal.proposedAction.kind,
+      rationale: winner.proposal.rationale,
+    },
+    deliveredBy: "veyra-agent-daemon",
+    generatedAt: new Date().toISOString(),
+  };
+
+  const deliverable = keccak256(toHex(JSON.stringify(artifact, bigintSafe)));
+  mkdirSync(DELIVERY_DIR, { recursive: true });
+  writeFileSync(
+    resolve(DELIVERY_DIR, `job-${jobId}.json`),
+    JSON.stringify({ ...artifact, deliverableHash: deliverable, canonicalForm: "JSON.stringify with bigints as strings, key order as written" }, bigintSafe, 2),
+  );
+  return { deliverable, winner };
+}
+
+async function handleJob(signer, jobId, state) {
+  const job = await client.readContract({ address: COMMERCE, abi: COMMERCE_ABI, functionName: "jobs", args: [jobId] });
+
+  if (job[2].toLowerCase() !== VEYRA_WALLET.toLowerCase()) return false; // not ours
+
+  // Terminal states need nothing further; retire them so pending does not grow without bound.
+  if ([3, 4, 5].includes(Number(job[7]))) {
+    if (state.pending.includes(jobId.toString())) {
+      log(`job #${jobId} reached ${STATUS[Number(job[7])]} -- done`);
+      state.pending = state.pending.filter((p) => p !== jobId.toString());
+      state.handled.push(jobId.toString());
+    }
+    return false;
+  }
+
+  // A job we already delivered may still need settling, if it went through the Router.
+  if (Number(job[7]) === 2) return settleIfDue(signer, jobId, job, state);
+  if (Number(job[7]) !== 1) return false; // otherwise only a Funded job is actionable
+
+  // An expired job cannot be submitted -- the contract reverts without a reason string, which
+  // reads as a mysterious failure in the log. Skip it deliberately and record it as handled so
+  // the daemon stops retrying something that can never succeed. The client can still reclaim it.
+  const nowSecs = BigInt(Math.floor(Date.now() / 1000));
+  if (nowSecs > job[6]) {
+    log(`job #${jobId} expired ${new Date(Number(job[6]) * 1000).toISOString()} -- skipping (client can reclaim)`);
+    state.handled.push(jobId.toString());
+    return false;
+  }
+
+  log(`job #${jobId} is Funded for ${formatUnits(job[5], 18)} $U from ${job[1]} -- delivering`);
+
+  const { deliverable, winner } = await buildDeliverable(jobId, job);
+  log(`  evaluated: ${winner.proposal.candidateId} -> ${winner.proposal.proposedAction.kind}`);
+
+  const tx = await signer.sendAndWait(
+    `submit-${jobId}`,
+    COMMERCE,
+    encodeFunctionData({ abi: COMMERCE_ABI, functionName: "submit", args: [jobId, deliverable, "0x"] }),
+  );
+
+  // Never trust the receipt alone -- re-read the status to confirm the transition really happened.
+  const after = await client.readContract({ address: COMMERCE, abi: COMMERCE_ABI, functionName: "jobs", args: [jobId] });
+  if (Number(after[7]) !== 2) {
+    log(`  WARNING: submit mined (${tx.hash}) but job is ${STATUS[Number(after[7])]}, not Submitted`);
+    return false;
+  }
+
+  log(`  submitted: ${tx.hash}`);
+  log(`  deliverable ${deliverable}`);
+  // NOT "handled" yet: a Router-evaluated job still needs settling once its dispute window
+  // closes, and a client-evaluated one is waiting on the client. Only a terminal status retires
+  // a job. Tracking it as pending keeps it visible even after the cursor moves past it -- an
+  // earlier version advanced the cursor and silently abandoned a delivered-but-unsettled job.
+  if (!state.pending.includes(jobId.toString())) state.pending.push(jobId.toString());
+  return true;
+}
+
+/**
+ * Settles a Router-evaluated job whose dispute window has closed.
+ *
+ * Only applies to jobs that named the EvaluatorRouter as evaluator. A client-evaluated job is
+ * deliberately left alone: its client decides, and settling it on their behalf would take that
+ * choice away. Anyone may call settle() once the window has passed, so doing it here simply means
+ * the client is not left with a Submitted job that never resolves.
+ */
+async function settleIfDue(signer, jobId, job, state) {
+  if (job[3].toLowerCase() !== ROUTER.toLowerCase()) return false; // client-evaluated: not ours to settle
+
+  const policy = await client.readContract({ address: ROUTER, abi: ROUTER_ABI, functionName: "jobPolicy", args: [jobId] });
+  if (/^0x0+$/.test(policy)) return false;
+
+  const [windowSecs, submittedAt, disputed] = await Promise.all([
+    client.readContract({ address: policy, abi: POLICY_ABI, functionName: "disputeWindow" }),
+    client.readContract({ address: policy, abi: POLICY_ABI, functionName: "submittedAt", args: [jobId] }),
+    client.readContract({ address: policy, abi: POLICY_ABI, functionName: "disputed", args: [jobId] }),
+  ]);
+
+  if (disputed) {
+    log(`job #${jobId} is disputed -- leaving it for the policy's voters, not settling`);
+    return false;
+  }
+  const dueAt = Number(submittedAt) + Number(windowSecs);
+  if (Math.floor(Date.now() / 1000) < dueAt) {
+    log(`job #${jobId} submitted; dispute window closes ${new Date(dueAt * 1000).toISOString()}`);
+    return false;
+  }
+
+  log(`job #${jobId} dispute window closed -- settling`);
+  const tx = await signer.sendAndWait(`settle-${jobId}`, ROUTER, encodeFunctionData({ abi: ROUTER_ABI, functionName: "settle", args: [jobId, "0x"] }));
+  const after = await client.readContract({ address: COMMERCE, abi: COMMERCE_ABI, functionName: "jobs", args: [jobId] });
+  log(`  settled: ${tx.hash} -> ${STATUS[Number(after[7])]}`);
+  if (Number(after[7]) === 3) {
+    state.handled.push(jobId.toString());
+    state.pending = state.pending.filter((p) => p !== jobId.toString());
+  }
+  return true;
+}
+
+async function tick(signer, state) {
+  const counter = await client.readContract({ address: COMMERCE, abi: COMMERCE_ABI, functionName: "jobCounter" });
+
+  if (state.cursor === null) {
+    state.cursor = Math.max(0, Number(counter) - COLD_START_LOOKBACK);
+    log(`cold start: scanning from job #${state.cursor} to #${counter}`);
+  }
+
+  let delivered = 0;
+
+  // Always re-check jobs we have touched but not retired, regardless of where the cursor is.
+  const ids = new Set(state.pending.map(String));
+  for (let id = BigInt(state.cursor); id <= counter; id++) ids.add(id.toString());
+
+  for (const idStr of [...ids].sort((a, b) => Number(a) - Number(b))) {
+    const id = BigInt(idStr);
+    if (state.handled.includes(idStr)) continue;
+    try {
+      if (await handleJob(signer, id, state)) delivered++;
+    } catch (err) {
+      // One bad job must never stop the loop; log it and carry on.
+      log(`  job #${id} failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 160)}`);
+    }
+  }
+
+  // Only advance past jobs that can no longer become deliverable. A job still Open today may be
+  // funded tomorrow, so the cursor lags the counter by a small window.
+  state.cursor = Math.max(0, Number(counter) - 10);
+  saveState(state);
+  return delivered;
+}
+
+// ------------------------------------------------------------------------------------------
+
+log("VEYRA agent daemon starting");
+log(`  provider : ${VEYRA_WALLET}`);
+log(`  commerce : ${COMMERCE}`);
+log(`  poll     : every ${POLL_MS / 1000}s`);
+
+const { EVMWalletProvider } = await import("@bnbagent/sdk");
+const signer = createSigner(
+  client,
+  new EVMWalletProvider({ password: readWalletPassword(), address: VEYRA_WALLET, walletsDir: resolve(REPO, "smoketest/.studio/wallets"), persist: true }),
+  CHAIN_ID,
+);
+
+const state = loadState();
+const once = process.argv.includes("--once");
+
+let running = true;
+process.on("SIGINT", () => {
+  log("stopping");
+  running = false;
+});
+
+do {
+  try {
+    const n = await tick(signer, state);
+    if (n > 0) log(`delivered ${n} job(s)`);
+  } catch (err) {
+    log(`poll failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
+  }
+  if (once || !running) break;
+  await new Promise((r) => setTimeout(r, POLL_MS));
+} while (running);
+
+log("daemon stopped");

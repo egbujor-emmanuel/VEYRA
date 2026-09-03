@@ -38,6 +38,19 @@ export const ERC8183_TESTNET = {
 export const U_TOKEN_TESTNET = "0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565" as const;
 export const U_TOKEN_FAUCET_TESTNET = "0x86e9197CC0F76E4e4aaa7082180945196bBAb5D3" as const;
 
+/**
+ * VEYRA's own ERC-8183 settlement hook (contracts/OpenSettlementHook.sol), deployed so that the
+ * CLIENT can be their own evaluator.
+ *
+ * Without it, every job had to name the EvaluatorRouter as evaluator: the Router's hook rejects
+ * fund() with PolicyNotSet() on any job it does not evaluate, and registerJob() (which sets that
+ * policy) reverts RouterNotEvaluator() otherwise. That forced disputes through
+ * OptimisticPolicy.voteReject(), restricted to operator-granted voters -- so a user could raise a
+ * dispute but never resolve one. This hook imposes no policy, holds no funds, has no owner and no
+ * upgrade path; both of its methods are empty.
+ */
+export const VEYRA_SETTLEMENT_HOOK = "0xb9a689d455b8dcf91698766bc43aee4f1d7b8b71" as const;
+
 // ---- Health Factor Monitoring: real Venus Protocol testnet infrastructure ----
 export const VENUS_COMPTROLLER_TESTNET = "0x94d1820b2D1c7c7452A163983Dc888CEC546b77D" as const;
 export const VENUS_VUSDT_TESTNET = "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A" as const;

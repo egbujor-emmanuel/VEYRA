@@ -88,32 +88,68 @@ artifact self-consistent : YES   matches the chain : YES   job completed : YES
 The client's 1 $U left their wallet, sat in escrow, and was released to VEYRA only after the
 dispute window passed without challenge.
 
-### Disputes
+### Disputes — the client decides
 
-If VEYRA delivers something the client considers wrong, the client can dispute it inside the
-15-minute window, which blocks settlement. `scripts/proveDisputePath.mjs` proves that on-chain
-(job **#916**): funded, submitted by VEYRA, then `disputed: false -> true` raised by the client.
+Jobs created by this app name **the client as their own evaluator**, which under ERC-8183 makes
+the person who paid the sole authority on `complete()` and `reject()`. When VEYRA submits work,
+the client gets two buttons: **Accept & pay**, or **Reject & refund**.
 
-**What we cannot do, and do not pretend to:** resolving a dispute requires
-`OptimisticPolicy.voteReject()`, restricted to operator-granted voters. The policy has 2 voters,
-quorum 1, and an admin of `0x1001b2C0…` — BNB's operator, not us. `isVoter(VEYRA)` is `false` and
-`addVoter()` is admin-only. So the rejection-and-refund branch is reachable by the protocol but
-not by this project, and the script stops there rather than simulating an outcome it cannot cause.
+That required getting past a deadlock in the deployed contracts. Originally every job had to name
+the EvaluatorRouter as evaluator, because the Router's hook rejects `fund()` with `PolicyNotSet()`
+on any job it does not evaluate, while `registerJob()` (which sets that policy) reverts
+`RouterNotEvaluator()` otherwise. Rejection then had to go through
+`OptimisticPolicy.voteReject()`, restricted to operator-granted voters — 2 of them, administered
+by `0x1001b2C0…`, with `addVoter()` admin-only. A client could raise a dispute but never resolve
+one, and could not get their money back before expiry.
+
+The fix is `contracts/OpenSettlementHook.sol` — a 455-byte hook with no owner, no funds, no
+upgrade path and two empty methods. It imposes no policy, which lets a job name the client as
+evaluator. Proven end-to-end on job **#919**:
+
+```
+PASS  job names the CLIENT as evaluator
+PASS  job funded
+PASS  job reaches Submitted            (VEYRA submitted a deliverable)
+PASS  job is Rejected                  (the client refused it)
+PASS  client got their money back      9 -> 10 $U
+PASS  VEYRA was NOT paid
+```
+
+**The trade-off, stated plainly:** a client-evaluated job trusts the client. A dishonest one can
+reject good work and reclaim the budget. That is the mirror of the Router flow, where the provider
+is protected but the client is powerless. Neither is universally right; VEYRA offers the one that
+puts the user in control and says so.
+
+### Delivery is automatic
+
+`services/agent-daemon/` watches the chain for jobs naming VEYRA as provider, does the work, and
+submits the deliverable unattended. It discovers jobs by walking job IDs rather than event logs,
+because every public BSC testnet RPC tested refuses `eth_getLogs` over historical ranges.
+
+```bash
+node services/agent-daemon/index.mjs          # poll forever
+node services/agent-daemon/index.mjs --once   # single pass
+```
+
+It holds VEYRA's own operator key and uses it for exactly one thing: submitting deliverables for
+jobs where VEYRA is the provider. It settles Router-evaluated jobs once their dispute window
+closes, and never settles a client-evaluated one — that decision belongs to the client.
 
 ## What is NOT built
 
 Stated here rather than left to be discovered:
 
-- **VEYRA cannot act while you are away.** The session key is generated in your browser and never
-  leaves it. There is no backend holding it, so every run today is operator-triggered. "Autonomous
-  agent working for you in the background" is not true yet.
+- **VEYRA cannot manage YOUR position while you are away.** The session key you grant is generated
+  in your browser and never leaves it. The daemon holds only VEYRA's own key, so it can deliver
+  jobs but cannot touch a user's funds. Server-side custody of user session keys is designed
+  (the server would generate the keypair and the browser would pass only the public key, so the
+  private key never crosses the network) but not built.
 - **Tasks 3 and 4 in the Advantage Report had their conditions deliberately created**, because BSC
   testnet has no organic borrower drifting into risk and no trading volume. The conditions were
   manufactured; the agents' decisions were not, and the strategies were not modified.
-- **Delivery is operator-triggered.** Hiring an agent funds escrow, but VEYRA does not notice
-  and deliver by itself — `scripts/deliverJob.mjs` is run by hand. This is the same missing
-  backend as above: nothing is watching for new jobs.
-- **The dispute resolution branch is not ours to run** — see Disputes above.
+- **The daemon is not hosted.** It is a real process that must be running somewhere; the
+  marketplace itself is a static site. Nobody is running it 24/7, so delivery is automatic only
+  while it is up.
 - **Testnet only.** No mainnet deployment, no real funds.
 
 ## Running it
@@ -134,7 +170,8 @@ node scripts/runHealthFactorExecution.mjs    # Venus repayment
 node scripts/runYieldMigration.mjs           # pool migration
 node scripts/deliverJob.mjs 877              # agent delivers a hired job, then settles
 node scripts/verifyDelivery.mjs 877          # re-derive the deliverable hash (no keys needed)
-node scripts/proveDisputePath.mjs            # client raises a dispute on a submitted job
+node scripts/proveClientEvaluator.mjs        # client rejects a delivery and is refunded
+node services/agent-daemon/index.mjs --once  # agent finds and delivers funded jobs by itself
 node scripts/fundTestWallet.mjs 0x<address>  # top up a new tester's wallet
 ```
 

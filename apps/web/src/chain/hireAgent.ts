@@ -9,7 +9,7 @@
 import { encodeFunctionData, decodeEventLog, type Address, type Log } from "viem";
 import { publicClient } from "./client";
 import { altanaClient, type UserWallet } from "./passkeyWallet";
-import { ERC8183_TESTNET, U_TOKEN_TESTNET, U_TOKEN_FAUCET_TESTNET } from "../constants";
+import { ERC8183_TESTNET, U_TOKEN_TESTNET, U_TOKEN_FAUCET_TESTNET, VEYRA_SETTLEMENT_HOOK } from "../constants";
 
 export const COMMERCE_ABI = [
   {
@@ -34,6 +34,19 @@ export const COMMERCE_ABI = [
   {
     type: "function", name: "claimRefund", stateMutability: "nonpayable",
     inputs: [{ name: "jobId", type: "uint256" }],
+    outputs: [],
+  },
+  // Evaluator-only. For jobs created here the evaluator IS the client, so these are the two
+  // buttons a user gets on a submitted deliverable: accept it and release payment, or reject it
+  // and be refunded. Signatures verified against the deployed contract's own ABI.
+  {
+    type: "function", name: "complete", stateMutability: "nonpayable",
+    inputs: [{ name: "jobId", type: "uint256" }, { name: "reason", type: "bytes32" }, { name: "optParams", type: "bytes" }],
+    outputs: [],
+  },
+  {
+    type: "function", name: "reject", stateMutability: "nonpayable",
+    inputs: [{ name: "jobId", type: "uint256" }, { name: "reason", type: "bytes32" }, { name: "optParams", type: "bytes" }],
     outputs: [],
   },
   // Provider-side delivery. Note the bytes32 deliverable -- an earlier hand-written version of
@@ -143,7 +156,11 @@ export async function hireAgent(opts: HireAgentOpts) {
     data: encodeFunctionData({
       abi: COMMERCE_ABI,
       functionName: "createJob",
-      args: [opts.providerAddress, ERC8183_TESTNET.router, expiredAt, opts.description, ERC8183_TESTNET.router],
+      // The CLIENT is the evaluator, not the Router. Under ERC-8183 that makes the person who
+      // paid the sole authority on complete() and reject() -- so they can refuse bad work and be
+      // refunded immediately, instead of waiting out expiry with no recourse. Paired with our own
+      // hook, because the Router's hook refuses to fund a job it does not itself evaluate.
+      args: [opts.providerAddress, opts.wallet.address, expiredAt, opts.description, VEYRA_SETTLEMENT_HOOK],
     }),
   };
 
@@ -164,8 +181,9 @@ export async function fundJob(wallet: UserWallet, jobId: bigint, budgetWei: bigi
   return altanaClient().execute({
     wallet,
     signer: wallet.signer,
+    // No registerJob: that binds a dispute policy for Router-evaluated jobs and reverts
+    // RouterNotEvaluator() here. A client-evaluated job needs no policy -- the client decides.
     calls: [
-      { to: ERC8183_TESTNET.router, data: encodeFunctionData({ abi: ROUTER_ABI, functionName: "registerJob", args: [jobId, ERC8183_TESTNET.policy] }) },
       { to: ERC8183_TESTNET.commerce, data: encodeFunctionData({ abi: COMMERCE_ABI, functionName: "setBudget", args: [jobId, budgetWei, "0x"] }) },
       { to: ERC8183_TESTNET.commerce, data: encodeFunctionData({ abi: COMMERCE_ABI, functionName: "fund", args: [jobId, budgetWei, "0x"] }) },
     ],
@@ -340,4 +358,23 @@ export async function readJob(jobId: bigint): Promise<JobState> {
     statusCode,
     refundable,
   };
+}
+
+/** The client rejects a submitted deliverable. Only the job's evaluator may call this, which for
+ *  jobs created here is the client themselves -- the escrow refunds them in full. */
+export async function rejectDelivery(wallet: UserWallet, jobId: bigint, reason: `0x${string}`) {
+  return altanaClient().execute({
+    wallet,
+    signer: wallet.signer,
+    calls: [{ to: ERC8183_TESTNET.commerce, data: encodeFunctionData({ abi: COMMERCE_ABI, functionName: "reject", args: [jobId, reason, "0x"] }) }],
+  });
+}
+
+/** The client accepts a submitted deliverable, releasing the budget to the agent. */
+export async function acceptDelivery(wallet: UserWallet, jobId: bigint, reason: `0x${string}`) {
+  return altanaClient().execute({
+    wallet,
+    signer: wallet.signer,
+    calls: [{ to: ERC8183_TESTNET.commerce, data: encodeFunctionData({ abi: COMMERCE_ABI, functionName: "complete", args: [jobId, reason, "0x"] }) }],
+  });
 }

@@ -14,7 +14,8 @@ const ROUTER_ABI = JSON.parse(readFileSync(resolve(__dirname, "evaluatorRouter.a
 const COMMERCE="0xa206c0517b6371c6638cd9e4a42cc9f02a33b0de", ROUTER="0xd7d36d66d2f1b608a0f943f722d27e3744f66f25";
 const POLICY="0xd6a4217588f6b1f5657a92a3e94e6422ad771cea", U="0xc70B8741B8B07A6d61E54fd4B20f22Fa648E5565";
 const FAUCET="0x86e9197CC0F76E4e4aaa7082180945196bBAb5D3", VEYRA="0x9429BE71274b9E5fB56EE7C57C58298FFF720f11";
-const EXPIRY = 660;
+const HOOK="0xb9a689d455b8dcf91698766bc43aee4f1d7b8b71"; // our permissive hook -> client can evaluate
+const EXPIRY = 3600;
 const ERC20=[{type:"function",name:"approve",stateMutability:"nonpayable",inputs:[{name:"s",type:"address"},{name:"v",type:"uint256"}],outputs:[{type:"bool"}]},
              {type:"function",name:"balanceOf",stateMutability:"view",inputs:[{name:"a",type:"address"}],outputs:[{type:"uint256"}]}];
 const FAUCET_ABI=[{type:"function",name:"requestTokens",stateMutability:"nonpayable",inputs:[],outputs:[]}];
@@ -34,14 +35,14 @@ console.log(`\n$U: ${formatUnits(bal,18)}, budget ${formatUnits(BUDGET,18)}`);
 
 const expiredAt=BigInt(Math.floor(Date.now()/1000)+EXPIRY);
 const c=await exec({wallet,signer,calls:[
-  call(COMMERCE,COMMERCE_ABI,"createJob",[VEYRA,ROUTER,expiredAt,"VEYRA · Rebalancing (refund test)",ROUTER]),
+  call(COMMERCE,COMMERCE_ABI,"createJob",[VEYRA,wallet.address,expiredAt,"VEYRA · Rebalancing (daemon test)",HOOK]),
   call(U,ERC20,"approve",[COMMERCE,BUDGET])]},"create");
 const rc=await pub.getTransactionReceipt({hash:c.transactionHash});
 let jobId;
 for(const l of rc.logs){if(l.address.toLowerCase()!==COMMERCE.toLowerCase())continue;
   try{const d=decodeEventLog({abi:COMMERCE_ABI,eventName:"JobCreated",data:l.data,topics:l.topics});if(d.args?.jobId!==undefined){jobId=d.args.jobId;break;}}catch{}}
+// No registerJob: a client-evaluated job needs no dispute policy (RouterNotEvaluator otherwise).
 await exec({wallet,signer,calls:[
-  call(ROUTER,ROUTER_ABI,"registerJob",[jobId,POLICY]),
   call(COMMERCE,COMMERCE_ABI,"setBudget",[jobId,BUDGET,"0x"]),
   call(COMMERCE,COMMERCE_ABI,"fund",[jobId,BUDGET,"0x"])]},"fund");
 

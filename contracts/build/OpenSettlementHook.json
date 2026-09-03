@@ -1,0 +1,70 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes4",
+          "name": "",
+          "type": "bytes4"
+        },
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "name": "afterAction",
+      "outputs": [],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes4",
+          "name": "",
+          "type": "bytes4"
+        },
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "name": "beforeAction",
+      "outputs": [],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes4",
+          "name": "interfaceId",
+          "type": "bytes4"
+        }
+      ],
+      "name": "supportsInterface",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    }
+  ],
+  "bytecode": "0x6080604052348015600e575f80fd5b506101ab8061001c5f395ff3fe608060405234801561000f575f80fd5b506004361061003f575f3560e01c806301ffc9a714610043578063a3fe47831461006a578063dc08fb1d1461006a575b5f80fd5b6100566100513660046100d2565b610080565b604051901515815260200160405180910390f35b61007e6100783660046100f2565b50505050565b005b5f6001600160e01b03198216633ffb5e4f60e11b14806100b057506001600160e01b031982166301ffc9a760e01b145b92915050565b80356001600160e01b0319811681146100cd575f80fd5b919050565b5f602082840312156100e2575f80fd5b6100eb826100b6565b9392505050565b5f805f8060608587031215610105575f80fd5b84359350610115602086016100b6565b9250604085013567ffffffffffffffff811115610130575f80fd5b8501601f81018713610140575f80fd5b803567ffffffffffffffff811115610156575f80fd5b876020828401011115610167575f80fd5b94979396506020019450505056fea2646970667358221220917fadf3b2c440cd8650786905891f4ccb5a250cb6f929b4caa48ddee8ee157464736f6c634300081a0033"
+}
