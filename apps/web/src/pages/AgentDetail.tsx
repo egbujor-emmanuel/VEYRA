@@ -10,15 +10,35 @@ import { HirePanel } from "../components/HirePanel";
 import { JobsPanel } from "../components/JobsPanel";
 import { useConnectedWallet } from "../hooks/walletContext";
 
-const ACTIVATE_DISCLAIMER =
-  "Activating enables live monitoring in this browser tab; scheduled autonomous execution is a documented next step, not yet built.";
-
+/**
+ * What "activate" actually means, stated accurately.
+ *
+ * This previously said scheduled autonomous execution was "a documented next step, not yet
+ * built". That stopped being true: the daemon runs on a schedule, holds VEYRA's agent session
+ * key, and acts on positions whose owner has granted a live session -- proven on-chain with the
+ * user's own signer discarded first (scripts/proveAgentAutonomy.mjs). Leaving the old wording up
+ * would have told visitors the headline capability did not exist, on the page where they came to
+ * look for it.
+ */
 function ActivateToggle() {
   const [active, setActive] = useState(false);
   return (
     <div className="panel">
-      <button className="retry-btn" onClick={() => setActive((a) => !a)}>{active ? "Deactivate" : "Activate"}</button>
-      {active && <p className="freshness">{ACTIVATE_DISCLAIMER}</p>}
+      <h2>Activate</h2>
+      <p className="rationale">
+        VEYRA acts on positions whose owner has granted it a live, scoped session — it does not need this
+        tab open. Activating here just turns on live on-chain reads so you can watch the state it is
+        working from.
+      </p>
+      <button className="btn btn-secondary" onClick={() => setActive((a) => !a)}>
+        {active ? "Stop watching" : "Watch live state"}
+      </button>
+      {active && (
+        <p className="freshness" style={{ marginTop: 12 }}>
+          Reading live from BSC testnet. The agent itself runs on a schedule against every account that has
+          authorized it — grant a session from the marketplace and it will pick your position up.
+        </p>
+      )}
     </div>
   );
 }
