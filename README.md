@@ -145,6 +145,33 @@ every few minutes", not instant — which is fine against 24-hour job expiries.
 Verified end to end: the daemon discovered jobs #924 and #939 on its own, delivered both, then on
 a later pass settled #924 once its dispute window closed — `Completed`, and VEYRA was paid.
 
+### Putting funds under management
+
+A new passkey wallet holds a little tBNB and owns no PancakeSwap position, so "let the agent run
+your position" previously had no subject for anyone starting from zero. The **Put funds under
+management** panel closes that.
+
+The pool is VUSD/WBNB and a visitor has neither token — but a concentrated-liquidity range sitting
+entirely below the current price is funded by **token1 alone**, and WBNB is token1 here. So the
+visitor wraps their own tBNB and deposits it single-sided: no second token, no swap, no faucet.
+
+Wrapping, approving and minting are all signed by **the visitor**. VEYRA has no permission to
+touch their BNB or create a position — its session covers only the position manager and the swap
+router. It can manage what you deposit; it could never have deposited it.
+
+The position starts just below the current price, so it sits out of range and earns nothing where
+it is. That is deliberate — it is exactly the condition the Rebalancing agent exists to fix.
+
+`scripts/proveUserDeposit.mjs` walks the whole path for a brand-new wallet:
+
+```
+PASS  visitor owns no position to begin with
+PASS  visitor now owns a real position
+PASS  position holds real liquidity        #37196, range [-59300, -58300)
+PASS  session granted to VEYRA's agent key
+PASS  VEYRA operated on the visitor's position while they were away   CONFIRMED on-chain
+```
+
 ### VEYRA acts while you are away
 
 Authorizing VEYRA delegates to its **permanent agent session key**, whose private half lives with
@@ -202,6 +229,7 @@ node scripts/verifyDelivery.mjs 877          # re-derive the deliverable hash (n
 node scripts/proveClientEvaluator.mjs        # client rejects a delivery and is refunded
 node services/agent-daemon/index.mjs --once  # agent finds and delivers funded jobs by itself
 node scripts/proveAgentAutonomy.mjs          # VEYRA acts on a user's account, user absent
+node scripts/proveUserDeposit.mjs            # empty wallet -> funds under autonomous management
 node scripts/fundTestWallet.mjs 0x<address>  # top up a new tester's wallet
 ```
 

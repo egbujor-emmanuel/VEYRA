@@ -4,6 +4,9 @@ import { AGENT_CATALOG } from "../data/agentCatalog";
 import { MaturityBadge } from "../components/MaturityBadge";
 import { StatusTicker } from "../components/StatusTicker";
 import { WalletPanel } from "../components/WalletPanel";
+import { DepositPanel } from "../components/DepositPanel";
+import { useConnectedWallet } from "../hooks/walletContext";
+import { useWalletFunding } from "../hooks/useNativeBalance";
 import { Card } from "../components/ui/card";
 import { Badge, Dot } from "../components/ui/badge";
 
@@ -30,6 +33,9 @@ const GUARANTEES = [
 ];
 
 export function Marketplace() {
+  const wallet = useConnectedWallet();
+  const funding = useWalletFunding(wallet?.address ?? null);
+
   return (
     <>
       <StatusTicker />
@@ -65,6 +71,9 @@ export function Marketplace() {
 
         {/* ---- the actual, usable wallet flow ---- */}
         <WalletPanel />
+
+        {/* Only meaningful once there is a wallet -- renders nothing otherwise. */}
+        <DepositPanel wallet={wallet} nativeBalanceWei={funding?.balance.wei ?? null} />
 
         {/* ---- catalog ---- */}
         <section className="pt-10 pb-4">
