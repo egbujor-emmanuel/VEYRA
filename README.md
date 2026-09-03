@@ -199,6 +199,39 @@ PASS  out-of-scope call still refused
 Scope still holds with the user gone: the same session that managed a PancakeSwap position could
 not touch WBNB.
 
+### Agent-native payments (x402 / B402)
+
+A scoped session key can also *pay* — signing an x402 payment authorization on the user's behalf,
+within the limits they granted. `scripts/proveX402Payment.mjs` proves it end to end on chain 97:
+
+```
+PASS  user holds the payment token                              10 $U
+PASS  session granted to VEYRA's agent key
+PASS  token approved to Permit2
+PASS  Permit2 authorized as a signature checker for the session
+PASS  session produced a signed payment payload                 scheme=exact network=eip155:97
+PASS  X-PAYMENT header is well-formed base64 JSON
+PASS  ERC-1271 accepts the session signature                    0x1626ba7e (magic value)
+PASS  payment is bound to the stated recipient
+```
+
+The last two are the ones that matter. The account was asked the same question twice:
+
+```
+asked as Permit2 (the approved checker) : 0x1626ba7e   accepted
+asked as an unapproved caller           : 0xffffffff   refused
+```
+
+So the authorization is one a facilitator would settle, and **only the checker the user approved
+can validate it**. The recipient is bound into the signature as a Permit2 witness, so a settler
+cannot redirect the funds.
+
+Two things this cost, both worth recording: the digest must be built with
+`buildPermit2WitnessTypedData`, not the plain `PermitTransferFrom` builder — `permit2-exact` routes
+through a proxy that verifies the witness, and the wrong builder returns `0xffffffff` with a
+perfectly valid signature. And querying `isValidSignature` with no `from` fails for the same
+reason a real caller would not: `msg.sender` is the zero address, which is not an approved checker.
+
 ## What is NOT built
 
 Stated here rather than left to be discovered:
@@ -239,6 +272,7 @@ node scripts/verifyDelivery.mjs 877          # re-derive the deliverable hash (n
 node scripts/proveClientEvaluator.mjs        # client rejects a delivery and is refunded
 node services/agent-daemon/index.mjs --once  # agent finds and delivers funded jobs by itself
 node scripts/proveAgentAutonomy.mjs          # VEYRA acts on a user's account, user absent
+node scripts/proveX402Payment.mjs            # session key signs an x402 payment, ERC-1271 verified
 node scripts/proveUserDeposit.mjs            # empty wallet -> funds under autonomous management
 node scripts/fundTestWallet.mjs 0x<address>  # top up a new tester's wallet
 ```
