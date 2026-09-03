@@ -169,7 +169,7 @@ export function AgentDetail() {
       <HirePanel wallet={wallet} agentName={agent.displayName} />
 
       {/* Every job this browser has funded, with a reclaim button for anything undelivered. */}
-      <JobsPanel wallet={wallet} />
+      <JobsPanel wallet={wallet} agentName={agent.displayName} />
     </div>
   );
 }

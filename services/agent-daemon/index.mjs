@@ -25,7 +25,10 @@
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createPublicClient, http, encodeFunctionData, keccak256, toHex, formatUnits } from "viem";
+import { createPublicClient, http, encodeFunctionData, keccak256, toHex, formatUnits, padHex, encodeAbiParameters } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
+import { createClient as createAltanaClient, BNB_TESTNET } from "@altananetwork/sdk";
+import { hasLiveVeyraSession, readOwnedPositions, managePosition } from "./managePositions.mjs";
 import { evaluateV2, rangeKeeperStrategy, baselineHoldStrategy } from "@veyra/core";
 import { readPositionObservation, toMarketSnapshot } from "@veyra/chain/positionReader";
 import { createSigner } from "@veyra/chain/txSigner";
@@ -41,8 +44,11 @@ const COLD_START_LOOKBACK = Number(process.env.VEYRA_LOOKBACK ?? 40);
 
 const VEYRA_WALLET = "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11";
 const COMMERCE = "0xa206c0517b6371c6638cd9e4a42cc9f02a33b0de";
+const NFPM_ADDRESS = "0x427bF5b37357632377eCbEC9de3626C71A5396c1";
+const SWAP_ROUTER_ADDRESS = "0x1b81D678ffb9C0263b24A97847620C99d213eB14";
 const POSITION_TOKEN_ID = 37079n;
 const STATE_PATH = resolve(HERE, ".state.json");
+const AGENT_SESSION_PATH = resolve(REPO, "smoketest/.studio/agent-session.json");
 const DELIVERY_DIR = resolve(REPO, "docs/deliveries");
 
 const COMMERCE_ABI = JSON.parse(readFileSync(resolve(REPO, "scripts/agenticCommerce.abi.json"), "utf-8"));
@@ -95,13 +101,13 @@ function materializeCredentials() {
 }
 
 function loadState() {
-  if (!existsSync(STATE_PATH)) return { cursor: null, handled: [], pending: [] };
+  if (!existsSync(STATE_PATH)) return { cursor: null, handled: [], pending: [], watch: [] };
   try {
     const parsed = JSON.parse(readFileSync(STATE_PATH, "utf-8"));
-    return { cursor: parsed.cursor ?? null, handled: parsed.handled ?? [], pending: parsed.pending ?? [] };
+    return { cursor: parsed.cursor ?? null, handled: parsed.handled ?? [], pending: parsed.pending ?? [], watch: parsed.watch ?? [] };
   } catch {
     // A corrupt state file must not wedge the daemon; losing the cursor only means re-scanning.
-    return { cursor: null, handled: [], pending: [] };
+    return { cursor: null, handled: [], pending: [], watch: [] };
   }
 }
 const saveState = (s) => writeFileSync(STATE_PATH, JSON.stringify(s, null, 2));
@@ -199,6 +205,8 @@ async function handleJob(signer, jobId, state) {
   }
 
   log(`job #${jobId} is Funded for ${formatUnits(job[5], 18)} $U from ${job[1]} -- delivering`);
+  // Anyone who hires VEYRA becomes a candidate for position management too.
+  state.watch = [...new Set([...(state.watch ?? []), job[1]])];
 
   const { deliverable, winner } = await buildDeliverable(jobId, job);
   log(`  evaluated: ${winner.proposal.candidateId} -> ${winner.proposal.proposedAction.kind}`);
@@ -267,6 +275,76 @@ async function settleIfDue(signer, jobId, job, state) {
   return true;
 }
 
+/**
+ * The key hash IthacaAccount stores for a secp256k1 session key. Mirrors the SDK's
+ * computeAccountSecp256k1KeyHash, which is internal and not exported.
+ */
+function agentSessionKeyHash(address) {
+  const publicKeyHash = keccak256(padHex(address, { size: 32 }));
+  return keccak256(encodeAbiParameters([{ type: "uint256" }, { type: "bytes32" }], [2n, publicKeyHash]));
+}
+
+/**
+ * Manages the positions of every watched account that has a live VEYRA session.
+ *
+ * The watchlist is how discovery works: there is no on-chain reverse index from a session key back
+ * to the accounts that granted it, and historical eth_getLogs is unavailable on public BSC testnet
+ * RPCs. So accounts are learned from the job clients this daemon already sees, plus anything given
+ * explicitly via VEYRA_WATCH. Whether a session is actually live is then asked of the chain
+ * directly, which is authoritative.
+ */
+async function managePositions(state) {
+  if (!existsSync(AGENT_SESSION_PATH)) {
+    log("no agent session key present -- skipping position management");
+    return 0;
+  }
+  const agentKey = JSON.parse(readFileSync(AGENT_SESSION_PATH, "utf-8"));
+  const agentAccount = privateKeyToAccount(agentKey.privateKey);
+  const agentKeyHash = agentSessionKeyHash(agentKey.address);
+  const altana = createAltanaClient({ chains: [BNB_TESTNET] });
+
+  const extra = (process.env.VEYRA_WATCH ?? "").split(",").map((a) => a.trim()).filter(Boolean);
+  const watch = [...new Set([...(state.watch ?? []), ...extra])];
+  if (watch.length === 0) return 0;
+
+  let acted = 0;
+  for (const owner of watch) {
+    if (!(await hasLiveVeyraSession(client, owner, agentKeyHash))) continue;
+
+    const positions = await readOwnedPositions(client, owner);
+    if (positions.length === 0) continue;
+    log(`  ${owner} has a live VEYRA session and ${positions.length} position(s)`);
+
+    for (const positionTokenId of positions) {
+      try {
+        // Rebuilt per account: the session is bound to one wallet address.
+        const session = {
+          walletAddress: owner,
+          signer: {
+            type: "privateKey", address: agentAccount.address, publicKey: agentAccount.publicKey,
+            _privateKey: agentKey.privateKey,
+            async signDigest(d) { return agentAccount.sign({ hash: d }); },
+          },
+          publicKey: agentKey.publicKey,
+          permissions: { calls: [{ to: NFPM_ADDRESS }, { to: SWAP_ROUTER_ADDRESS }], spend: [{ limit: 50_000_000_000_000_000n, period: "day" }] },
+          expiry: Math.floor(Date.now() / 1000) + 3600,
+        };
+
+        const outcome = await managePosition({
+          client, executor: altana, session, owner, positionTokenId, agentKeyHash, log,
+        });
+        if (outcome.decision === "rebalanced") {
+          acted++;
+          log(`    REBALANCED #${positionTokenId} -> ${outcome.finalState}, new position ${outcome.newPositionTokenId ?? "n/a"}`);
+        }
+      } catch (err) {
+        log(`    position #${positionTokenId} failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 180)}`);
+      }
+    }
+  }
+  return acted;
+}
+
 async function tick(signer, state) {
   const counter = await client.readContract({ address: COMMERCE, abi: COMMERCE_ABI, functionName: "jobCounter" });
 
@@ -295,8 +373,16 @@ async function tick(signer, state) {
   // Only advance past jobs that can no longer become deliverable. A job still Open today may be
   // funded tomorrow, so the cursor lags the counter by a small window.
   state.cursor = Math.max(0, Number(counter) - 10);
+
+  let managed = 0;
+  try {
+    managed = await managePositions(state);
+  } catch (err) {
+    log(`position management failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
+  }
+
   saveState(state);
-  return delivered;
+  return delivered + managed;
 }
 
 // ------------------------------------------------------------------------------------------

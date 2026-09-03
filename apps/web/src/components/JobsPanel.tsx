@@ -22,13 +22,22 @@ function statusVariant(state: JobState | null): string {
   return "status-muted";
 }
 
-export function JobsPanel({ wallet }: { wallet: UserWallet | null }) {
+/**
+ * `agentName` scopes the list to one agent's jobs.
+ *
+ * Without it this panel showed every job the browser had ever funded on every agent page -- a
+ * Rebalancing job appeared under Grid Trading, Yield and Health Factor identically, which reads
+ * as though the same job had been carried out by all four. The job data was always correct; the
+ * panel simply had no notion of which agent it was rendering beside.
+ */
+export function JobsPanel({ wallet, agentName }: { wallet: UserWallet | null; agentName?: string }) {
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busyJobId, setBusyJobId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
-    const stored = loadJobs();
+    const all = loadJobs();
+    const stored = agentName ? all.filter((j) => j.agentName === agentName) : all;
     if (stored.length === 0) {
       setRows([]);
       return;
@@ -43,7 +52,7 @@ export function JobsPanel({ wallet }: { wallet: UserWallet | null }) {
       }),
     );
     setRows(next);
-  }, []);
+  }, [agentName]);
 
   useEffect(() => {
     void refresh();
@@ -105,9 +114,10 @@ export function JobsPanel({ wallet }: { wallet: UserWallet | null }) {
 
   return (
     <div className="panel">
-      <h2>Your jobs</h2>
+      <h2>{agentName ? `Your ${agentName} jobs` : "Your jobs"}</h2>
       <p className="rationale">
-        Jobs you have funded from this browser. <strong>You are the evaluator on every job you create here</strong> —
+        {agentName ? `Jobs you have funded for ${agentName}.` : "Jobs you have funded from this browser."}{" "}
+        <strong>You are the evaluator on every job you create here</strong> —
         when VEYRA submits its work you decide whether to accept it and release payment, or reject it and be
         refunded in full. A job that passes its expiry undelivered can be reclaimed outright.
       </p>
@@ -120,7 +130,7 @@ export function JobsPanel({ wallet }: { wallet: UserWallet | null }) {
             <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap", alignItems: "center" }}>
               <div>
                 <div className="candidate-name" style={{ fontSize: 15 }}>
-                  Job #{stored.jobId} — {stored.agentName}
+                  Job #{stored.jobId}{agentName ? "" : ` — ${stored.agentName}`}
                 </div>
                 <div className="freshness" style={{ marginTop: 4 }}>
                   {error

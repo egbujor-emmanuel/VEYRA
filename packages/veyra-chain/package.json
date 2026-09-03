@@ -17,7 +17,9 @@
     "./healthFactorReader": { "types": "./dist/src/healthFactorReader.d.ts", "default": "./dist/src/healthFactorReader.js" },
     "./venusAbis": { "types": "./dist/src/venusAbis.d.ts", "default": "./dist/src/venusAbis.js" },
     "./healthFactorExecutor": { "types": "./dist/src/healthFactorExecutor.d.ts", "default": "./dist/src/healthFactorExecutor.js" },
-    "./txSigner": { "types": "./dist/src/txSigner.d.ts", "default": "./dist/src/txSigner.js" }
+    "./txSigner": { "types": "./dist/src/txSigner.d.ts", "default": "./dist/src/txSigner.js" },
+    "./sessionSigner": { "types": "./dist/src/sessionSigner.d.ts", "default": "./dist/src/sessionSigner.js" },
+    "./rebalanceExecutor": { "types": "./dist/src/rebalanceExecutor.d.ts", "default": "./dist/src/rebalanceExecutor.js" }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

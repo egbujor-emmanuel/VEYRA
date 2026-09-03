@@ -29,6 +29,23 @@ export const MANAGED_POOL = {
 };
 
 const NFPM = "0x427bF5b37357632377eCbEC9de3626C71A5396c1" as Address;
+const SWAP_ROUTER = "0x1b81D678ffb9C0263b24A97847620C99d213eB14" as Address;
+
+/**
+ * Pre-approval ceiling granted at deposit time, so the agent never needs approval rights.
+ *
+ * Rebalancing a position requires approving the position manager (to mint) and the swap router
+ * (to fix the token ratio). Those are calls to the TOKEN contracts, deliberately outside VEYRA's
+ * session scope -- an approval permission is the power to hand a balance to any spender, and
+ * granting the agent that would undo the point of a narrow session.
+ *
+ * So the user grants them here, under their own signature, scoped to these two spenders only.
+ * Not unbounded: PancakeSwap's own guidance is explicit that unbounded approvals are the wrong
+ * default. This is sized to the deposit, which is the most the agent can ever need to recycle.
+ */
+function approvalCeiling(amountWei: bigint): bigint {
+  return amountWei * 4n;
+}
 
 const POOL_ABI = [
   { type: "function", name: "slot0", stateMutability: "view", inputs: [], outputs: [
@@ -113,7 +130,13 @@ export async function depositIntoManagedPosition(wallet: UserWallet, amountWei: 
     signer: wallet.signer,
     calls: [
       { to: MANAGED_POOL.token1, value: amountWei, data: encodeFunctionData({ abi: WBNB_ABI, functionName: "deposit", args: [] }) },
-      { to: MANAGED_POOL.token1, data: encodeFunctionData({ abi: WBNB_ABI, functionName: "approve", args: [NFPM, amountWei] }) },
+      // Approve both spenders, for both tokens, in the user's own name. The agent will need
+      // these when it recentres the position; it cannot grant them itself, and the session
+      // signer refuses to proceed rather than attempting an approval it has no right to make.
+      { to: MANAGED_POOL.token1, data: encodeFunctionData({ abi: WBNB_ABI, functionName: "approve", args: [NFPM, approvalCeiling(amountWei)] }) },
+      { to: MANAGED_POOL.token1, data: encodeFunctionData({ abi: WBNB_ABI, functionName: "approve", args: [SWAP_ROUTER, approvalCeiling(amountWei)] }) },
+      { to: MANAGED_POOL.token0, data: encodeFunctionData({ abi: WBNB_ABI, functionName: "approve", args: [NFPM, approvalCeiling(amountWei)] }) },
+      { to: MANAGED_POOL.token0, data: encodeFunctionData({ abi: WBNB_ABI, functionName: "approve", args: [SWAP_ROUTER, approvalCeiling(amountWei)] }) },
       {
         to: NFPM,
         data: encodeFunctionData({
