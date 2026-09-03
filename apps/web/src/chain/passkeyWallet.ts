@@ -10,6 +10,7 @@
 
 import { createClient, BNB_TESTNET, signerFromPasskey } from "@altananetwork/sdk";
 import { PANCAKE_V3_TESTNET } from "@veyra/chain/testnetAddresses";
+import { VEYRA_AGENT_SESSION } from "../constants";
 
 /** Relying-party id for WebAuthn. Must match the site's own domain at runtime. */
 const RP_ID = typeof window !== "undefined" ? window.location.hostname : "localhost";
@@ -64,6 +65,30 @@ export interface GrantVeyraSessionOpts {
  * tokenId or WHICH recipient. VEYRA's own argument-level policy (authorizeAltanaCall) is what
  * closes that gap before anything is broadcast.
  */
+/**
+ * VEYRA's agent session key as a PUBLIC-ONLY signer.
+ *
+ * grantSession never signs with the session key -- it only needs `publicKey` to build the key
+ * descriptor and `address` to compute the key hash. The user's own passkey signs the
+ * authorization. So the private half is genuinely absent from this bundle.
+ *
+ * signDigest therefore throws rather than being stubbed silently: if any future code path tries
+ * to USE this session from the browser, it must fail loudly instead of appearing to work.
+ */
+function agentSessionSignerPublicOnly(): NonNullable<Parameters<AltanaClient["grantSession"]>[0]["sessionSigner"]> {
+  return {
+    type: "privateKey",
+    address: VEYRA_AGENT_SESSION.address,
+    publicKey: VEYRA_AGENT_SESSION.publicKey,
+    async signDigest() {
+      throw new Error(
+        "VEYRA's agent session key cannot sign in the browser -- only its public half ships here. " +
+          "Signing happens in services/agent-daemon, which holds the private key.",
+      );
+    },
+  } as NonNullable<Parameters<AltanaClient["grantSession"]>[0]["sessionSigner"]>;
+}
+
 export async function grantVeyraSession(opts: GrantVeyraSessionOpts): Promise<UserSession> {
   const expiry = Math.floor(Date.now() / 1000) + opts.lifetimeSeconds;
   return altanaClient().grantSession({
@@ -79,7 +104,11 @@ export async function grantVeyraSession(opts: GrantVeyraSessionOpts): Promise<Us
     //
     // Enforcement is identical either way; what registration buys is public verifiability.
     register: true,
-    ...(opts.agentSessionSigner ? { sessionSigner: opts.agentSessionSigner } : {}),
+    // Delegate to VEYRA's own agent session key rather than letting the SDK mint a throwaway one
+    // in this tab. A browser-generated session dies with the tab and can never be used while the
+    // user is away; this one is held by the daemon, so the grant actually means something.
+    // Public-only by construction -- the private half is not in this bundle and never will be.
+    sessionSigner: opts.agentSessionSigner ?? agentSessionSignerPublicOnly(),
     permissions: {
       calls: [
         { to: PANCAKE_V3_TESTNET.nonfungiblePositionManager as `0x${string}` },

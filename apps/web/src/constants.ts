@@ -54,3 +54,24 @@ export const VEYRA_SETTLEMENT_HOOK = "0xb9a689d455b8dcf91698766bc43aee4f1d7b8b71
 // ---- Health Factor Monitoring: real Venus Protocol testnet infrastructure ----
 export const VENUS_COMPTROLLER_TESTNET = "0x94d1820b2D1c7c7452A163983Dc888CEC546b77D" as const;
 export const VENUS_VUSDT_TESTNET = "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A" as const;
+
+/**
+ * VEYRA's permanent agent session key -- PUBLIC HALF ONLY.
+ *
+ * This is what makes autonomy real without ever putting a private key in a browser. When a user
+ * authorizes VEYRA, the browser passes this public-only signer to grantSession(): Altana's
+ * keyDescriptorFromSigner reads only `publicKey`, and keyHashForSigner only `address`, so no
+ * private key is needed to AUTHORIZE a session -- only to USE one.
+ *
+ * The private half lives on the operator's machine (smoketest/.studio/agent-session.json,
+ * gitignored) and is held by services/agent-daemon. It never crosses the network in either
+ * direction, which is strictly safer than the obvious alternative of generating a session key in
+ * the browser and uploading it.
+ *
+ * Regenerating this key would orphan every session users have already granted.
+ */
+export const VEYRA_AGENT_SESSION = {
+  address: "0x66d8Ca7788Cc02D98BD3FeC30ecBa0fA5A7a2b1e" as const,
+  publicKey:
+    "0x04669efc3c5497545d70af499862718c1e3fa2c39140e2ab155bb93e4b3ea5b1f146f7993e2bb51f01f666d108e07851247a23e2da1188a45bb8e036170b4b59b4" as const,
+};

@@ -135,15 +135,37 @@ It holds VEYRA's own operator key and uses it for exactly one thing: submitting 
 jobs where VEYRA is the provider. It settles Router-evaluated jobs once their dispute window
 closes, and never settles a client-evaluated one — that decision belongs to the client.
 
+### VEYRA acts while you are away
+
+Authorizing VEYRA delegates to its **permanent agent session key**, whose private half lives with
+the daemon and whose public half is the only part compiled into the site. Neither key ever crosses
+the network:
+
+- `grantSession()` needs only `publicKey` and `address` to authorize a session — **your passkey**
+  signs the grant, not VEYRA's key.
+- The daemon reconstructs the session from its private half and acts within your scope.
+
+Compare the obvious alternative — the browser mints a session key and uploads it — which puts a
+live key on the wire and in server logs. This does not. The public-only signer in the bundle has a
+`signDigest` that throws, so any attempt to sign in the browser fails loudly rather than silently.
+
+`scripts/proveAgentAutonomy.mjs` proves it, and is deliberately harsh: after granting, **the
+user's signer is discarded entirely** before VEYRA acts.
+
+```
+PASS  frontend signer carries no private key
+PASS  session was granted to VEYRA's agent key
+PASS  VEYRA executed on the user's account with the user absent   CONFIRMED on-chain
+PASS  out-of-scope call still refused
+```
+
+Scope still holds with the user gone: the same session that managed a PancakeSwap position could
+not touch WBNB.
+
 ## What is NOT built
 
 Stated here rather than left to be discovered:
 
-- **VEYRA cannot manage YOUR position while you are away.** The session key you grant is generated
-  in your browser and never leaves it. The daemon holds only VEYRA's own key, so it can deliver
-  jobs but cannot touch a user's funds. Server-side custody of user session keys is designed
-  (the server would generate the keypair and the browser would pass only the public key, so the
-  private key never crosses the network) but not built.
 - **Tasks 3 and 4 in the Advantage Report had their conditions deliberately created**, because BSC
   testnet has no organic borrower drifting into risk and no trading volume. The conditions were
   manufactured; the agents' decisions were not, and the strategies were not modified.
@@ -172,6 +194,7 @@ node scripts/deliverJob.mjs 877              # agent delivers a hired job, then 
 node scripts/verifyDelivery.mjs 877          # re-derive the deliverable hash (no keys needed)
 node scripts/proveClientEvaluator.mjs        # client rejects a delivery and is refunded
 node services/agent-daemon/index.mjs --once  # agent finds and delivers funded jobs by itself
+node scripts/proveAgentAutonomy.mjs          # VEYRA acts on a user's account, user absent
 node scripts/fundTestWallet.mjs 0x<address>  # top up a new tester's wallet
 ```
 
