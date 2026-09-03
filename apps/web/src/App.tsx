@@ -6,6 +6,7 @@ import { ExecutionHistory } from "./pages/ExecutionHistory";
 import { ExecutionDetail } from "./pages/ExecutionDetail";
 import { Marketplace } from "./pages/Marketplace";
 import { AgentDetail } from "./pages/AgentDetail";
+import { HowItWorks } from "./pages/HowItWorks";
 import { Button } from "./components/ui/button";
 import { cn } from "./lib/utils";
 import { WalletProvider } from "./hooks/walletContext";
@@ -13,6 +14,7 @@ import { WalletProvider } from "./hooks/walletContext";
 const NAV = [
   { to: "/agents", label: "Agents", end: false },
   { to: "/", label: "Dashboard", end: true },
+  { to: "/how-it-works", label: "How it works", end: false },
   { to: "/arena", label: "Arena", end: false },
   { to: "/executions", label: "Executions", end: false },
 ];
@@ -109,6 +111,7 @@ export function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/agents" element={<Marketplace />} />
           <Route path="/agents/:categoryId" element={<AgentDetail />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/arena" element={<ArenaHistory />} />
           <Route path="/arena/:roundId" element={<ArenaRoundDetail />} />
           <Route path="/executions" element={<ExecutionHistory />} />

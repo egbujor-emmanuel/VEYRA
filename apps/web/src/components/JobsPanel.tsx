@@ -6,6 +6,7 @@
 // refund guarantee.
 
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { formatUnits, keccak256, toHex } from "viem";
 import { ExternalLink, RotateCw } from "lucide-react";
 import { claimRefund, readJob, rejectDelivery, acceptDelivery, type JobState } from "../chain/hireAgent";
@@ -169,6 +170,13 @@ export function JobsPanel({ wallet, agentName }: { wallet: UserWallet | null; ag
                   >
                     {busyJobId === stored.jobId ? "Reclaiming…" : "Claim refund"}
                   </button>
+                )}
+                {/* A delivered job carries a deliverable hash on-chain, and the artifact behind it is
+                    archived. Point at how to check that rather than asking anyone to take it on trust. */}
+                {state?.status === "Completed" && (
+                  <Link to="/how-it-works" className="freshness" title="How to re-derive this job's deliverable hash yourself">
+                    verify this work
+                  </Link>
                 )}
                 <a
                   href={`https://testnet.bscscan.com/address/0xa206c0517b6371c6638cd9e4a42cc9f02a33b0de`}
