@@ -3,10 +3,12 @@
 // to manage -- then grants VEYRA a scoped, expiring, revocable session over their own position.
 //
 // This is Altana's own supported consumer path (createPasskeyWallet / recoverFromPasskey /
-// grantSession / revokeSession). It deliberately does NOT use the injected-wallet signer path:
-// @altananetwork/sdk v0.5.1 does not implement one -- its own error text says so explicitly
-// ("Injected wallet signers (e.g. MetaMask) ... the current build of @altananetwork/sdk doesn't
-// accept them as a signer type").
+// grantSession / revokeSession).
+//
+// It deliberately does NOT use an injected wallet as the signer, and as of SDK 0.9.0 there is no
+// such path to use: the injected-signer export is gone, along with the v0.5.1 error text that
+// used to explain its absence. Per BNB's own browser-wallet guide, MetaMask's role here is to
+// FUND an Altana wallet, not to sign for one. The passkey remains the signer.
 
 import { createClient, BNB_TESTNET, signerFromPasskey } from "@altananetwork/sdk";
 import { PANCAKE_V3_TESTNET } from "@veyra/chain/testnetAddresses";

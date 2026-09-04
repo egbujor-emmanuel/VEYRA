@@ -27,7 +27,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createPublicClient, http, encodeFunctionData, keccak256, toHex, formatUnits, padHex, encodeAbiParameters } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { createClient as createAltanaClient, BNB_TESTNET } from "@altananetwork/sdk";
+import { createClient as createAltanaClient, BNB_TESTNET, deserializeSession, signerFromPrivateKey } from "@altananetwork/sdk";
 import { hasLiveVeyraSession, readOwnedPositions, managePosition } from "./managePositions.mjs";
 import { manageHealthFactor } from "./manageHealthFactor.mjs";
 import { evaluateV2, rangeKeeperStrategy, baselineHoldStrategy } from "@veyra/core";
@@ -318,18 +318,29 @@ async function managePositions(state) {
 
     for (const positionTokenId of positions) {
       try {
-        // Rebuilt per account: the session is bound to one wallet address.
-        const session = {
-          walletAddress: owner,
-          signer: {
-            type: "privateKey", address: agentAccount.address, publicKey: agentAccount.publicKey,
-            _privateKey: agentKey.privateKey,
-            async signDigest(d) { return agentAccount.sign({ hash: d }); },
+        // Rebuilt per account: a session is bound to one wallet address.
+        //
+        // deserializeSession (SDK 0.9.0) does this properly instead of hand-assembling the
+        // object: it marries the stored, JSON-safe half with the signer we hold, and REFUSES a
+        // signer whose public key does not match the stored one. Hand-building skipped that
+        // check, and a mismatched key would not have failed here -- it would have surfaced later
+        // as an opaque relay rejection.
+        //
+        // The permissions below are what this daemon expects to have been granted. They are not
+        // load-bearing for safety: the account enforces whatever the user actually authorized, so
+        // a mismatch costs an attempt, never extra authority.
+        const session = deserializeSession(
+          {
+            walletAddress: owner,
+            publicKey: agentKey.publicKey,
+            permissions: {
+              calls: [{ to: NFPM_ADDRESS }, { to: SWAP_ROUTER_ADDRESS }],
+              spend: [{ limit: "50000000000000000", period: "day" }],
+            },
+            expiry: Math.floor(Date.now() / 1000) + 3600,
           },
-          publicKey: agentKey.publicKey,
-          permissions: { calls: [{ to: NFPM_ADDRESS }, { to: SWAP_ROUTER_ADDRESS }], spend: [{ limit: 50_000_000_000_000_000n, period: "day" }] },
-          expiry: Math.floor(Date.now() / 1000) + 3600,
-        };
+          signerFromPrivateKey(agentKey.privateKey),
+        );
 
         const outcome = await managePosition({
           client, executor: altana, session, owner, positionTokenId, agentKeyHash, log,
