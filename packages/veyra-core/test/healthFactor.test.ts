@@ -129,3 +129,53 @@ test("evaluateHealthFactor: exactly one winner, and a repay recommendation outsc
   assert.equal(result.scored.filter((s) => s.isWinner).length, 1);
   assert.equal(result.winner.proposal.candidateId, "health-factor-monitor-v1");
 });
+
+// ---- oracle pricing of the borrowed asset ----
+// Regression tests for a real defect: the ratio valued debt at face value, i.e. 1 token = $1.
+// Venus's testnet oracle prices USDT at $0.50, so the metric overstated debt by 2x on the very
+// asset the "honest simplification for a stablecoin" was justified for.
+
+test("computeHealthFactorSnapshot: values debt with the oracle price, not face value", () => {
+  // 10 USDT (6 dp) at $0.50 = $5 of debt, against $5 of headroom -> 50%, not 66%.
+  const snapshot = computeHealthFactorSnapshot({
+    account: "0x0000000000000000000000000000000000000001",
+    comptrollerError: 0n,
+    liquidityUsd1e18: 5_000000000000000000n,
+    shortfallUsd1e18: 0n,
+    borrowedPrincipalUnderlyingUnits: 10_000000n,
+    borrowedTokenSymbol: "USDT",
+    borrowedTokenDecimals: 6,
+    // $0.50 scaled by 1e(36-6) = 5e29
+    borrowedTokenPriceMantissa: 500000000000000000000000000000n,
+  });
+  assert.equal(snapshot.borrowToCapacityRatio, 50);
+});
+
+test("computeHealthFactorSnapshot: an 18-decimal asset above $1 is valued up, not flattened to face", () => {
+  // 1 XVS at $3.20 = $3.20 of debt against $3.20 headroom -> 50%. Face value would call it 23%.
+  const snapshot = computeHealthFactorSnapshot({
+    account: "0x0000000000000000000000000000000000000001",
+    comptrollerError: 0n,
+    liquidityUsd1e18: 3_200000000000000000n,
+    shortfallUsd1e18: 0n,
+    borrowedPrincipalUnderlyingUnits: 1_000000000000000000n,
+    borrowedTokenSymbol: "XVS",
+    borrowedTokenDecimals: 18,
+    borrowedTokenPriceMantissa: 3_200000000000000000n, // $3.20 scaled by 1e(36-18)
+  });
+  assert.equal(snapshot.borrowToCapacityRatio, 50);
+});
+
+test("computeHealthFactorSnapshot: with no oracle price it falls back to face value rather than reporting no debt", () => {
+  // A zero-value debt would read as a perfectly safe position, which is the dangerous failure.
+  const snapshot = computeHealthFactorSnapshot({
+    account: "0x0000000000000000000000000000000000000001",
+    comptrollerError: 0n,
+    liquidityUsd1e18: 10_000000000000000000n,
+    shortfallUsd1e18: 0n,
+    borrowedPrincipalUnderlyingUnits: 10_000000n,
+    borrowedTokenSymbol: "USDT",
+    borrowedTokenDecimals: 6,
+  });
+  assert.equal(snapshot.borrowToCapacityRatio, 50);
+});
