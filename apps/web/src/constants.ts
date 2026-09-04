@@ -70,6 +70,14 @@ export const VEYRA_SETTLEMENT_HOOK = "0xb9a689d455b8dcf91698766bc43aee4f1d7b8b71
 // ---- Health Factor Monitoring: real Venus Protocol testnet infrastructure ----
 export const VENUS_COMPTROLLER_TESTNET = "0x94d1820b2D1c7c7452A163983Dc888CEC546b77D" as const;
 export const VENUS_VUSDT_TESTNET = "0xb7526572FFE56AB9D7489838Bf2E18e3323b441A" as const;
+// The market the live borrow actually sits in, and the one services/agent-daemon watches.
+//
+// The detail page used to read vUSDT, whose debt has since been repaid to zero -- so it rendered
+// NO_BORROW_POSITION under a description promising "a real, currently-open borrow position".
+// vBTC is the only market that passes all three borrow gates on this testnet (cap > 0, cap >
+// totalBorrows, cash > 0), and unlike vUSDT it accrues interest, so the position drifts toward the
+// 60% threshold on its own. Verified on-chain 2026-09-04: borrowBalanceStored 2767439825924.
+export const VENUS_VBTC_TESTNET = "0xb6e9322C49FD75a367Fcb17B0Fcd62C5070EbCBe" as const;
 
 /**
  * VEYRA's permanent agent session key -- PUBLIC HALF ONLY.

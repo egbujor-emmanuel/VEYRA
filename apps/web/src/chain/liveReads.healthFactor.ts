@@ -4,7 +4,7 @@
 import { readVenusAccountObservation } from "@veyra/chain/healthFactorReader";
 import type { HealthFactorMarketSnapshot } from "@veyra/core";
 import { publicClient } from "./client";
-import { VENUS_COMPTROLLER_TESTNET, VENUS_VUSDT_TESTNET, VEYRA_WALLET } from "../constants";
+import { VENUS_COMPTROLLER_TESTNET, VENUS_VBTC_TESTNET, VEYRA_WALLET } from "../constants";
 
 export interface LiveHealthFactorState {
   snapshot: HealthFactorMarketSnapshot;
@@ -15,7 +15,7 @@ export async function fetchLiveHealthFactorState(): Promise<LiveHealthFactorStat
   const snapshot = await readVenusAccountObservation({
     client: publicClient,
     comptrollerAddress: VENUS_COMPTROLLER_TESTNET,
-    borrowedVTokenAddress: VENUS_VUSDT_TESTNET,
+    borrowedVTokenAddress: VENUS_VBTC_TESTNET,
     account: VEYRA_WALLET,
   });
   return { snapshot, fetchedAt: new Date().toISOString() };

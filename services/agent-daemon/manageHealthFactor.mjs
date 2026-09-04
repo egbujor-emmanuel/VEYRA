@@ -58,15 +58,6 @@ export async function manageHealthFactor({ client, signer, account, log }) {
       continue;
     }
 
-    // Log the precise ratio, not the floored integer the strategy compares. A position drifting
-    // 59.9991 -> 59.9994 looks frozen at "59" otherwise, and the whole point of watching this
-    // market is that the drift is real and visible.
-    const debtUsd = obs.borrowedTokenPriceMantissa && obs.borrowedTokenPriceMantissa > 0n
-      ? (obs.borrowedPrincipalUnderlyingUnits * obs.borrowedTokenPriceMantissa) / 10n ** 18n
-      : obs.borrowedPrincipalUnderlyingUnits * 10n ** BigInt(18 - obs.borrowedTokenDecimals);
-    const totalUsd = debtUsd + obs.liquidityUsd1e18;
-    const precise = totalUsd === 0n ? 0 : Number((debtUsd * 100000000n) / totalUsd) / 1000000;
-
     const job = {
       jobId: `health-factor-daemon-${market.label}-${Date.now()}`,
       createdAt: new Date().toISOString(),
@@ -77,7 +68,9 @@ export async function manageHealthFactor({ client, signer, account, log }) {
     const proposal = await healthFactorMonitorStrategy(job, snapshot);
 
     log?.(
-      `  ${market.label}: ratio ${precise.toFixed(5)}% (floors to ${snapshot.borrowToCapacityRatio}, ${snapshot.solvencyStatus}), ` +
+      // computeHealthFactorSnapshot now carries fractional resolution itself, so this no longer
+      // recomputes the ratio alongside it -- one source, one number.
+      `  ${market.label}: ratio ${snapshot.borrowToCapacityRatio.toFixed(5)}% (${snapshot.solvencyStatus}), ` +
         `debt ${obs.borrowedPrincipalUnderlyingUnits} ${obs.borrowedTokenSymbol} -> ${proposal.proposedAction.kind}`,
     );
 

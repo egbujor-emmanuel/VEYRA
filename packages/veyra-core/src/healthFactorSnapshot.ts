@@ -34,6 +34,11 @@ export interface HealthFactorMarketSnapshot {
    * Deliberately NOT named "health factor" -- Venus's own (liquidity, shortfall) pair is the
    * authoritative solvency signal; this is a derived, precisely-scoped convenience metric for
    * this evaluator only.
+   *
+   * Carries real fractional resolution. It used to be integer-truncated by the bigint division
+   * that produced it, which made a position drifting 59.87 -> 59.94 look frozen at 59, and made
+   * any `.toFixed(1)` display ("59.0%") fake precision. The daemon had grown its own parallel
+   * precise computation to work around exactly that; this is the single source now.
    */
   borrowToCapacityRatio: number;
 }
@@ -63,7 +68,12 @@ export function computeHealthFactorSnapshot(observation: VenusAccountObservation
       // which would read as a safe position and is the more dangerous failure.
       : observation.borrowedPrincipalUnderlyingUnits * decimalsScale;
   const totalCapacityUsd1e18 = borrowedUsd1e18 + observation.liquidityUsd1e18;
-  const borrowToCapacityRatio = totalCapacityUsd1e18 === 0n ? 0 : Number((borrowedUsd1e18 * 100n) / totalCapacityUsd1e18);
+  // Scale before dividing so the truncation happens five digits further right, not at the
+  // integer. Threshold behaviour is unchanged -- floor(x) >= 60 and x >= 60 agree for every x.
+  const borrowToCapacityRatio =
+    totalCapacityUsd1e18 === 0n
+      ? 0
+      : Number((borrowedUsd1e18 * 100_00000n) / totalCapacityUsd1e18) / 100000;
   return { observation, solvencyStatus: "HEALTHY", borrowToCapacityRatio };
 }
 
