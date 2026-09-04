@@ -22,29 +22,6 @@ import { useConnectedWallet } from "../hooks/walletContext";
  * would have told visitors the headline capability did not exist, on the page where they came to
  * look for it.
  */
-function ActivateToggle() {
-  const [active, setActive] = useState(false);
-  return (
-    <div className="panel">
-      <h2>Activate</h2>
-      <p className="rationale">
-        VEYRA acts on positions whose owner has granted it a live, scoped session — it does not need this
-        tab open. Activating here just turns on live on-chain reads so you can watch the state it is
-        working from.
-      </p>
-      <button className="btn btn-secondary" onClick={() => setActive((a) => !a)}>
-        {active ? "Stop watching" : "Watch live state"}
-      </button>
-      {active && (
-        <p className="freshness" style={{ marginTop: 12 }}>
-          Reading live from BSC testnet. The agent itself runs on a schedule against every account that has
-          authorized it — grant a session from the marketplace and it will pick your position up.
-        </p>
-      )}
-    </div>
-  );
-}
-
 /**
  * The thresholds each agent actually acts on, quoted from the strategy that owns them.
  *
@@ -70,6 +47,58 @@ function DecisionRule({ children }: { children: React.ReactNode }) {
     <div className="panel">
       <h2>What it does with this</h2>
       <p className="rationale">{children}</p>
+    </div>
+  );
+}
+
+/**
+ * What "activate" means, per category, stated accurately.
+ *
+ * This panel used to render the same sentence on all four pages: VEYRA acts on a schedule and
+ * does not need the tab open. That is true of rebalancing and health-factor monitoring, which the
+ * daemon runs every ten minutes. It was not true of grid trading or yield optimisation, which only
+ * ever ran when an operator invoked the orchestrator. Rather than qualify it vaguely, each page
+ * now says which of the two it is, and why.
+ */
+type Scheduling = "scheduled" | "on-demand";
+
+const SCHEDULING: Record<JobCategory, { mode: Scheduling; note: string }> = {
+  rebalance: {
+    mode: "scheduled",
+    note: "The daemon runs every ten minutes against every account that has granted VEYRA a live, scoped session. It does not need this tab open — activating here only turns on live reads so you can watch the state it works from.",
+  },
+  "health-factor-monitoring": {
+    mode: "scheduled",
+    note: "The daemon reads this position every ten minutes and repays without being asked once the ratio crosses the threshold. It does not need this tab open.",
+  },
+  "grid-trading": {
+    mode: "on-demand",
+    note: "Grid runs when the orchestrator is invoked, not on a schedule. It was put under the daemon and taken back out: the first scheduled pass decreased and collected a slot as the strategy asked, then the ratio-fixing swap failed and the executor's own guard refused to mint a position at the wrong ratio. The slot was restored, and this stays operator-invoked until that path is fixed. The guard behaving correctly is why the damage stopped at one slot.",
+  },
+  "yield-optimisation": {
+    mode: "on-demand",
+    note: "Deliberately not scheduled. A migration moves the whole position, and this run's own record states the advantage it responded to was seeded rather than observed — BSC testnet has too little volume for a candidate to overtake organically. Automating a capital move on a signal the record itself calls unreliable would be the wrong thing to build.",
+  },
+};
+
+function ActivateToggle({ category }: { category: JobCategory }) {
+  const [active, setActive] = useState(false);
+  const { mode, note } = SCHEDULING[category];
+  return (
+    <div className="panel">
+      <h2>Activate</h2>
+      <span className={`status-pill ${mode === "scheduled" ? "status-good" : "status-muted"}`}>
+        {mode === "scheduled" ? "RUNS ON A SCHEDULE" : "OPERATOR-INVOKED"}
+      </span>
+      <p className="rationale" style={{ marginTop: 10 }}>{note}</p>
+      <button className="btn btn-secondary" onClick={() => setActive((a) => !a)}>
+        {active ? "Stop watching" : "Watch live state"}
+      </button>
+      {active && (
+        <p className="freshness" style={{ marginTop: 12 }}>
+          Reading live from BSC testnet.
+        </p>
+      )}
     </div>
   );
 }
@@ -122,7 +151,7 @@ function RebalanceDetail() {
         <p>Rebalancing has its own full dashboard, with live position state, arena history, and execution history.</p>
         <Link to="/">View the Rebalancing Dashboard &rarr;</Link>
       </div>
-      <ActivateToggle />
+      <ActivateToggle category="rebalance" />
     </>
   );
 }
@@ -167,7 +196,7 @@ function GridTradingDetail() {
         ladder would now place it. An out-of-range slot that the ladder still agrees with is left alone —
         recentering it would spend gas to arrive back where it already is.
       </DecisionRule>
-      <ActivateToggle />
+      <ActivateToggle category="grid-trading" />
     </>
   );
 }
@@ -252,7 +281,7 @@ function YieldOptimisationDetail() {
           execution was real, and so was the manufactured setup that triggered it.
         </p>
       </div>
-      <ActivateToggle />
+      <ActivateToggle category="yield-optimisation" />
     </>
   );
 }
@@ -329,7 +358,7 @@ function HealthFactorDetail() {
         verified by re-reading the debt afterwards, because a Compound fork returns an error code instead
         of reverting: a mined transaction can change nothing.
       </DecisionRule>
-      <ActivateToggle />
+      <ActivateToggle category="health-factor-monitoring" />
     </>
   );
 }
