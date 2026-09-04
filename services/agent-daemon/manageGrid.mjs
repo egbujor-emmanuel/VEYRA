@@ -10,8 +10,6 @@
 // SIMULATE -> authorize -> execute path, with the same execution policy gate, that produced the
 // archived grid run. Nothing here decides anything; the strategy does.
 
-import { runGridOrchestratorLoop } from "@veyra/chain/gridOrchestrator";
-
 /** The two real grid slots on BSC testnet. Mirrors apps/web GRID_POSITION_TOKEN_IDS. */
 const GRID_POSITION_TOKEN_IDS = [37091n, 37093n];
 
@@ -24,6 +22,14 @@ const GRID_POSITION_TOKEN_IDS = [37091n, 37093n];
  * repays and the session-scoped rebalances.
  */
 export async function manageGrid({ client, wallet, account, docsDir, log }) {
+  // Imported dynamically, inside the caller's try/catch, on purpose. A static import that fails
+  // to resolve is a LOAD-time error: it kills the process before any handler can see it, which is
+  // exactly what happened when this module first shipped without a matching entry in
+  // @veyra/chain's exports map -- one missing line took the whole daemon red, including the job
+  // delivery and health-factor work that had nothing to do with grid. Dynamic import makes the
+  // isolation real rather than assumed.
+  const { runGridOrchestratorLoop } = await import("@veyra/chain/gridOrchestrator");
+
   const result = await runGridOrchestratorLoop({
     client,
     wallet,
