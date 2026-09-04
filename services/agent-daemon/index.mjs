@@ -29,6 +29,7 @@ import { createPublicClient, http, encodeFunctionData, keccak256, toHex, formatU
 import { privateKeyToAccount } from "viem/accounts";
 import { createClient as createAltanaClient, BNB_TESTNET } from "@altananetwork/sdk";
 import { hasLiveVeyraSession, readOwnedPositions, managePosition } from "./managePositions.mjs";
+import { manageHealthFactor } from "./manageHealthFactor.mjs";
 import { evaluateV2, rangeKeeperStrategy, baselineHoldStrategy } from "@veyra/core";
 import { readPositionObservation, toMarketSnapshot } from "@veyra/chain/positionReader";
 import { createSigner } from "@veyra/chain/txSigner";
@@ -379,6 +380,15 @@ async function tick(signer, state) {
     managed = await managePositions(state);
   } catch (err) {
     log(`position management failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
+  }
+
+  // Health Factor: VEYRA's own Venus position. Watched every pass so a threshold crossing caused
+  // by nothing but accrued interest is answered minutes later, with no operator involved.
+  try {
+    const hf = await manageHealthFactor({ client, signer, account: VEYRA_WALLET, log });
+    managed += hf.filter((o) => o.decision === "repaid").length;
+  } catch (err) {
+    log(`health-factor monitoring failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
   }
 
   saveState(state);

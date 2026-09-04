@@ -232,23 +232,41 @@ through a proxy that verifies the witness, and the wrong builder returns `0xffff
 perfectly valid signature. And querying `isValidSignature` with no `from` fails for the same
 reason a real caller would not: `msg.sender` is the zero address, which is not an approved checker.
 
+### Health Factor: the trigger is organic
+
+The risk is no longer manufactured. VEYRA holds a real Venus borrow parked just under the
+strategy's 60% threshold, and **interest carries it across with nobody acting**. Measured on-chain,
+two samples four minutes apart with no transaction sent in between:
+
+```
+t0   block 128997055   debt 2767441356361   ratio 59.99901327%
+t1   block 128997597   debt 2767443241581   ratio 59.99902962%
+
+debt  +1,885,220 units over 542 blocks
+ratio +0.00001635 points  ->  crosses 60% in ~4 hours, unaided
+```
+
+The daemon watches this every pass and repays when it crosses — a threshold breach caused by time
+alone, answered by an agent nobody prompted.
+
+Finding a market where this is possible took three passes, because "borrowable" has three
+independent gates and the highest-rate markets each fail a different one:
+
+| Market | APY | Why not |
+|---|---|---|
+| vTRX | 30.75% | 100% utilised — no cash to lend |
+| vUNI | 26.68% | 100% utilised |
+| XVS | 3.11% | 2.2M cash, still reverts `market borrow cap reached` |
+| vBNB | 7.54% | reverts `market borrow cap is 0` — Venus treats a zero cap as **disabled**, not unlimited |
+| **vBTC** | **1.32%** | **passes all three — this is the live position** |
+
+vUSDT, where the original demo ran, pays **0.00%**. Its debt could never grow, which is why that
+trigger had to be pushed by hand.
+
 ## What is NOT built
 
 Stated here rather than left to be discovered:
 
-- **Health Factor's trigger was operator-initiated, and on this chain it has to be.** Two
-  mechanisms could move a healthy Venus position into danger on its own, and both are inert on
-  BSC testnet: `vUSDT.borrowRatePerBlock` reads **0**, so the debt never grows, and the Venus
-  oracle returns **static constants**, so collateral value never moves. Nothing there can carry a
-  position across a risk threshold, ever. Switching to vBNB (7.54% APY) does not rescue it either
-  — starting at 59.9%, interest alone would need roughly **19 days** to cross 60%.
-
-  So the risk was created deliberately: VEYRA borrowed more USDT against its own real collateral,
-  moving the ratio 14% → 74%. **What was real:** the borrow, the debt, the 74% ratio, the
-  `repayBorrow`, and the verification (the debt is re-read afterwards rather than trusting the
-  receipt). **What was not organic:** only that we caused the risk instead of waiting for it,
-  because waiting produces nothing here. The 60% threshold was never modified and the runner
-  aborts if the strategy returns anything but a repay.
 - **Testnet only.** No mainnet deployment, no real funds.
 
 ## Running it

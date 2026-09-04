@@ -29,12 +29,26 @@ export async function readVenusAccountObservation(opts: ReadVenusAccountOpts): P
     functionName: "getAccountLiquidity",
     args: [opts.account],
   });
-  const borrowedPrincipalUnderlyingUnits = await opts.client.readContract({
-    address: opts.borrowedVTokenAddress,
-    abi: VTOKEN_BORROW_BALANCE_ABI,
-    functionName: "borrowBalanceCurrent",
-    args: [opts.account],
-  });
+  // borrowBalanceCurrent accrues interest and is nonpayable; on the native vBNB market an
+  // eth_call against it comes back empty ("returned no data"). borrowBalanceStored is a plain
+  // view that exists on every market, and is at most one accrual behind -- which does not matter
+  // for a threshold check that runs every few minutes.
+  let borrowedPrincipalUnderlyingUnits: bigint;
+  try {
+    borrowedPrincipalUnderlyingUnits = (await opts.client.readContract({
+      address: opts.borrowedVTokenAddress,
+      abi: VTOKEN_BORROW_BALANCE_ABI,
+      functionName: "borrowBalanceCurrent",
+      args: [opts.account],
+    })) as bigint;
+  } catch {
+    borrowedPrincipalUnderlyingUnits = (await opts.client.readContract({
+      address: opts.borrowedVTokenAddress,
+      abi: [{ type: "function", name: "borrowBalanceStored", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }] }],
+      functionName: "borrowBalanceStored",
+      args: [opts.account],
+    })) as bigint;
+  }
   // Price the debt properly. Failing softly here is deliberate: a missing oracle should degrade
   // to the face-value estimate, not abort monitoring a position that may be at risk.
   let borrowedTokenPriceMantissa: bigint | undefined;
@@ -54,14 +68,26 @@ export async function readVenusAccountObservation(opts: ReadVenusAccountOpts): P
     borrowedTokenPriceMantissa = undefined;
   }
 
-  const underlyingAddress = await opts.client.readContract({
-    address: opts.borrowedVTokenAddress,
-    abi: VTOKEN_UNDERLYING_ABI,
-    functionName: "underlying",
-  });
+  // Venus has two market shapes. An ERC-20 market exposes underlying(); the NATIVE market (vBNB)
+  // does not -- the call returns "0x" and viem throws. That market's unit is simply 18-decimal
+  // BNB, so detect the shape rather than assuming every market wraps a token.
+  let underlyingAddress: Address | null = null;
+  try {
+    underlyingAddress = (await opts.client.readContract({
+      address: opts.borrowedVTokenAddress,
+      abi: VTOKEN_UNDERLYING_ABI,
+      functionName: "underlying",
+    })) as Address;
+  } catch {
+    underlyingAddress = null;
+  }
 
-  const borrowedTokenDecimals = await opts.client.readContract({ address: underlyingAddress, abi: ERC20_META_ABI, functionName: "decimals" });
-  const borrowedTokenSymbol = await opts.client.readContract({ address: underlyingAddress, abi: ERC20_META_ABI, functionName: "symbol" });
+  const borrowedTokenDecimals = underlyingAddress
+    ? await opts.client.readContract({ address: underlyingAddress, abi: ERC20_META_ABI, functionName: "decimals" })
+    : 18;
+  const borrowedTokenSymbol = underlyingAddress
+    ? await opts.client.readContract({ address: underlyingAddress, abi: ERC20_META_ABI, functionName: "symbol" })
+    : "BNB";
 
   const observation: VenusAccountObservation = {
     account: opts.account,

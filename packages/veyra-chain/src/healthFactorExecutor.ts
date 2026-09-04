@@ -9,7 +9,7 @@
 import type { PublicClient, Address, Hex } from "viem";
 import { encodeFunctionData } from "viem";
 import type { Signer, TxRecord } from "./txSigner.js";
-import { VTOKEN_WRITE_ABI, ERC20_APPROVE_ABI, VTOKEN_UNDERLYING_ABI } from "./venusAbis.js";
+import { VTOKEN_WRITE_ABI, ERC20_APPROVE_ABI, VTOKEN_UNDERLYING_ABI, VTOKEN_NATIVE_REPAY_ABI } from "./venusAbis.js";
 
 export interface RepayResult {
   /** Debt before and after, in the underlying token's own units. */
@@ -50,11 +50,53 @@ export async function repayVenusBorrow(
   const account = signer.address;
   const txs: TxRecord[] = [];
 
-  const underlying = (await client.readContract({
-    address: vToken,
-    abi: VTOKEN_UNDERLYING_ABI,
-    functionName: "underlying",
-  })) as Address;
+  // Venus has two market shapes and they repay differently. An ERC-20 market exposes underlying()
+  // and needs approve-then-repayBorrow(amount). The native market (vBNB) has no underlying at all
+  // -- repayBorrow() is payable and takes the amount as msg.value. Calling the ERC-20 path there
+  // reverts on the missing underlying(), so the shape has to be detected rather than assumed.
+  let underlying: Address | null = null;
+  try {
+    underlying = (await client.readContract({
+      address: vToken,
+      abi: VTOKEN_UNDERLYING_ABI,
+      functionName: "underlying",
+    })) as Address;
+  } catch {
+    underlying = null; // native market
+  }
+
+  if (underlying === null) {
+    const borrowBefore = await readBorrowBalance(client, vToken, account);
+    if (borrowBefore === 0n) {
+      throw new Error(`Account ${account} has no outstanding borrow on ${vToken} -- nothing to repay.`);
+    }
+    const held = await client.getBalance({ address: account });
+    if (held < amount) {
+      throw new Error(
+        `Cannot repay ${amount} wei of native currency: wallet holds only ${held}. Repaying more ` +
+          `than is held would revert.`,
+      );
+    }
+
+    txs.push(
+      await signer.sendAndWait(
+        "repay-borrow-native",
+        vToken,
+        encodeFunctionData({ abi: VTOKEN_NATIVE_REPAY_ABI, functionName: "repayBorrow", args: [] }) as Hex,
+        amount,
+      ),
+    );
+
+    const borrowAfter = await readBorrowBalance(client, vToken, account);
+    const repaidAmount = borrowBefore > borrowAfter ? borrowBefore - borrowAfter : 0n;
+    if (repaidAmount === 0n) {
+      throw new Error(
+        `repayBorrow was mined but the debt did not change (still ${borrowAfter}). Venus returns an ` +
+          `error code instead of reverting, so this is a silent refusal, not a success.`,
+      );
+    }
+    return { borrowBefore, borrowAfter, repaidAmount, txs };
+  }
 
   const borrowBefore = await readBorrowBalance(client, vToken, account);
   if (borrowBefore === 0n) {

@@ -52,3 +52,12 @@ export const ERC20_APPROVE_ABI = [
   { type: "function", name: "balanceOf", stateMutability: "view", inputs: [{ name: "account", type: "address" }], outputs: [{ type: "uint256" }] },
   { type: "function", name: "allowance", stateMutability: "view", inputs: [{ name: "owner", type: "address" }, { name: "spender", type: "address" }], outputs: [{ type: "uint256" }] },
 ] as const;
+
+/**
+ * The native (vBNB) market's repay entrypoint. Unlike an ERC-20 market it takes no amount
+ * argument -- the amount IS msg.value -- and there is nothing to approve first.
+ */
+export const VTOKEN_NATIVE_REPAY_ABI = [
+  { type: "function", name: "repayBorrow", stateMutability: "payable", inputs: [], outputs: [] },
+  { type: "function", name: "borrow", stateMutability: "nonpayable", inputs: [{ name: "borrowAmount", type: "uint256" }], outputs: [{ type: "uint256" }] },
+] as const;

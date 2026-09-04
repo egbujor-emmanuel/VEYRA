@@ -38,8 +38,18 @@ const RPC = "https://bsc-testnet-rpc.publicnode.com";
 const CHAIN_ID = 97;
 const VEYRA = "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11";
 const COMPTROLLER = "0x94d1820b2D1c7c7452A163983Dc888CEC546b77D";
-/** Venus XVS: 3.11% borrow APY and 2.2M tokens of available cash, unlike the 100%-utilised markets. */
-const VXVS = "0x6d6F697e34145Bb95c54E77482d97cc261Dc237E";
+/**
+ * vBTC: 1.32% borrow APY, ~1087 tokens of room. The best market that is genuinely borrowable.
+ *
+ * Getting here took three passes, because "borrowable" has three independent gates and the
+ * highest-rate markets fail different ones:
+ *   - vTRX (30.75%) and vUNI (26.68%) are at 100% utilisation -- no cash to lend.
+ *   - XVS (3.11%) has 2.2M tokens of cash and still reverts "market borrow cap reached".
+ *   - vBNB (7.54%) reverts "market borrow cap is 0" -- Venus treats a zero cap as DISABLED, not
+ *     unlimited, which is the opposite of the assumption an earlier survey here made.
+ * Requiring cap > 0 AND cap > totalBorrows AND cash > 0 leaves vBTC at the top.
+ */
+const VBNB = "0xb6e9322C49FD75a367Fcb17B0Fcd62C5070EbCBe"; // vBTC
 
 /** Just under the strategy's 60% warning threshold, so interest alone carries it across. */
 const TARGET_RATIO_PCT = Number(process.argv[2] ?? "59.9");
@@ -77,7 +87,7 @@ function readWalletPassword() {
 /** The ratio at full precision. The snapshot floors it to an integer, which hides the drift. */
 async function preciseRatio() {
   const snap = await readVenusAccountObservation({
-    client, comptrollerAddress: COMPTROLLER, borrowedVTokenAddress: VXVS, account: VEYRA,
+    client, comptrollerAddress: COMPTROLLER, borrowedVTokenAddress: VBNB, account: VEYRA,
   });
   const o = snap.observation;
   const debtUsd = o.borrowedTokenPriceMantissa && o.borrowedTokenPriceMantissa > 0n
@@ -93,22 +103,22 @@ async function preciseRatio() {
 }
 
 console.log("=== 1. the market, and why this one ===");
-const [cash, rate, underlying] = await Promise.all([
-  client.readContract({ address: VXVS, abi: VTOKEN, functionName: "getCash" }),
-  client.readContract({ address: VXVS, abi: VTOKEN, functionName: "borrowRatePerBlock" }),
-  client.readContract({ address: VXVS, abi: VTOKEN, functionName: "underlying" }),
+const [cash, rate] = await Promise.all([
+  client.readContract({ address: VBNB, abi: VTOKEN, functionName: "getCash" }),
+  client.readContract({ address: VBNB, abi: VTOKEN, functionName: "borrowRatePerBlock" }),
 ]);
-const [dec, sym] = await Promise.all([
-  client.readContract({ address: underlying, abi: ERC20, functionName: "decimals" }),
-  client.readContract({ address: underlying, abi: ERC20, functionName: "symbol" }),
-]);
+// Detect the market shape rather than assuming: an ERC-20 market exposes underlying(), the
+// native one does not.
+const underlying = await client.readContract({ address: VBNB, abi: VTOKEN, functionName: "underlying" }).catch(() => null);
+const dec = underlying ? Number(await client.readContract({ address: underlying, abi: ERC20, functionName: "decimals" })) : 18;
+const sym = underlying ? await client.readContract({ address: underlying, abi: ERC20, functionName: "symbol" }) : "BNB";
 const apy = (Number(rate) * 10512000) / 1e18 * 100;
-console.log(`  ${sym} @ ${VXVS}`);
+console.log(`  ${sym} @ ${VBNB}`);
 console.log(`  borrow APY ${apy.toFixed(2)}%  cash available ${formatUnits(cash, dec)}`);
 if (apy <= 0) throw new Error("This market pays no borrow interest -- it cannot produce organic drift.");
 
 const oracle = await client.readContract({ address: COMPTROLLER, abi: COMPT, functionName: "oracle" });
-const price = await client.readContract({ address: oracle, abi: ORACLE, functionName: "getUnderlyingPrice", args: [VXVS] });
+const price = await client.readContract({ address: oracle, abi: ORACLE, functionName: "getUnderlyingPrice", args: [VBNB] });
 console.log(`  oracle price mantissa ${price}  (= $${Number(price) / 10 ** (36 - Number(dec))} per ${sym})`);
 
 console.log("\n=== 2. where the position stands now ===");
@@ -140,7 +150,7 @@ if (extraUnits === 0n) {
     new EVMWalletProvider({ password: readWalletPassword(), address: VEYRA, walletsDir: resolve(REPO, "smoketest/.studio/wallets"), persist: true }),
     CHAIN_ID,
   );
-  const tx = await signer.sendAndWait("borrow", VXVS, encodeFunctionData({ abi: VTOKEN, functionName: "borrow", args: [extraUnits] }));
+  const tx = await signer.sendAndWait("borrow", VBNB, encodeFunctionData({ abi: VTOKEN, functionName: "borrow", args: [extraUnits] }));
   console.log(`  tx ${tx.hash}`);
 }
 
