@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import { tiedWithWinner } from "../data/arenaTie";
 import { ArenaCandidateCard } from "../components/ArenaCandidateCard";
 import { ExecutionPlanPanel } from "../components/ExecutionPlanPanel";
 import { SimulationPanel } from "../components/SimulationPanel";
@@ -39,7 +40,7 @@ export function ArenaRoundDetail() {
       <div className="panel">
         <h2>Candidates</h2>
         <div className="cards">
-          {round.proposals.map((p) => <ArenaCandidateCard key={p.candidateId} proposal={p} />)}
+          {round.proposals.map((p) => <ArenaCandidateCard key={p.candidateId} proposal={p} tiedWith={tiedWithWinner(round.proposals)} />)}
         </div>
       </div>
 

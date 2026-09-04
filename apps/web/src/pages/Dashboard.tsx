@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { LiveHero } from "../components/LiveHero";
+import { tiedWithWinner } from "../data/arenaTie";
 import { ArenaCandidateCard } from "../components/ArenaCandidateCard";
 import { ExecutionPlanPanel } from "../components/ExecutionPlanPanel";
 import { SimulationPanel } from "../components/SimulationPanel";
@@ -43,11 +44,11 @@ export function Dashboard() {
           <div className="panel">
             <h2>Agent Arena — Round #{round.roundId} <ProvenanceBadge tier="DERIVED" /></h2>
             <p className="subtitle" style={{ marginBottom: 16 }}>
-              Same live market state handed to all three candidates. The winner is whichever proposal actually scores best — never assumed.
+              Same live market state handed to all three candidates. The winner is whichever proposal actually scores best — never assumed. When two score identically on identical gas, the round is decided by evaluation order and is labelled as such.
             </p>
             <div className="cards">
               {round.proposals.map((p) => (
-                <ArenaCandidateCard key={p.candidateId} proposal={p} />
+                <ArenaCandidateCard key={p.candidateId} proposal={p} tiedWith={tiedWithWinner(round.proposals)} />
               ))}
             </div>
           </div>
