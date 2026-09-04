@@ -22,7 +22,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      - run: npm ci
+      # --legacy-peer-deps is required, not cosmetic: @bnbagent/sdk pins a peer of
+      # @altananetwork/sdk <0.6.0 (its latest release pins exactly 0.7.1), while this project runs
+      # 0.9.0. We use exactly one symbol from that package -- EVMWalletProvider, for keystore
+      # signing -- and it never touches Altana, so the conflict is real to npm and inert at
+      # runtime. The lockfile is generated with the same flag; dropping it here makes CI and local
+      # disagree, which is exactly how this broke.
+      - run: npm ci --legacy-peer-deps
       - run: npm run build --workspace=@veyra/core
       - run: npm run build --workspace=@veyra/chain
       - run: npm run build --workspace=@veyra/web
