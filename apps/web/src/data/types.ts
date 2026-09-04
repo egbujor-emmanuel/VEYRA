@@ -224,6 +224,29 @@ export interface ManifestEntry {
   effectiveOutcome: string;
   effectiveExecuted: boolean;
   amendment: { sourceFile: string; newPositionTokenId: string } | null;
+  /** Transactions the run broadcast, counting an amendment's. Zero for a blocked run -- that is the point. */
+  transactionCount: number;
+  /** Total gas used across those transactions, as a decimal string. */
+  gasUsed: string;
+  generatedAt: string | null;
+}
+
+/** Per-round outcome, so Arena History can show what happened without opening each round. */
+export interface ArenaRoundSummary {
+  roundId: number;
+  winnerCandidateId: string | null;
+  winnerAction: string | null;
+  winnerScore: number | null;
+  wonByOurAgent: boolean;
+  candidateCount: number;
+  /** The best-scoring candidate that did not win, so the margin is visible on the row. */
+  runnerUpCandidateId: string | null;
+  runnerUpScore: number | null;
+  /** True when the winner tied the runner-up on BOTH score and gas -- list order decided it, not merit. */
+  decidedByOrdering: boolean;
+  /** The block whose state every candidate was handed -- distinct per round, and checkable. */
+  observedAtBlock: string | null;
+  generatedAt: string | null;
 }
 
 export interface ArchiveManifest {
@@ -236,4 +259,21 @@ export interface ArchiveManifest {
   entries: ManifestEntry[];
   latestRoundId: number;
   arenaRoundIds: number[];
+  arenaRounds: ArenaRoundSummary[];
+  categories: CategorySummary[];
+}
+
+/** Per-category totals, computed from that category's own archives (see generateArchiveManifest.ts). */
+export interface CategorySummary {
+  category: string;
+  roundCount: number;
+  runCount: number;
+  executedRunCount: number;
+  recommendMigrateOrRepayCount: number;
+  holdCount: number;
+  transactionCount: number;
+  totalGasUsed: string;
+  lastActionAt: string | null;
+  /** Runs whose failure is preserved in the record rather than deleted. */
+  preservedFailureCount: number;
 }

@@ -24,11 +24,13 @@ export function TrackRecordStat({ manifest }: { manifest: ArchiveManifest }) {
         </div>
         <div className="stat-box">
           <div className="num" style={{ color: "var(--accent)" }}>{manifest.wonByOurAgent}</div>
-          <div className="lbl">Won by RangeKeeper</div>
+          {/* "Selected", not "won": in most rounds RangeKeeper tied a baseline on every scored
+              axis and was picked by list order. See ArenaHistory for the per-round breakdown. */}
+          <div className="lbl">RangeKeeper Selected</div>
         </div>
       </div>
       <p style={{ fontSize: "0.78rem", color: "var(--muted)", marginTop: 14 }}>
-        {manifest.executionBlockedJobs} blocked run(s) mean the safety gate correctly refused to execute an unsafe rebalance — that's the architecture working as intended, not a shortfall.
+        {manifest.executionBlockedJobs} blocked run(s) mean the safety gate correctly refused to execute an unsafe rebalance — that's the architecture working as intended, not a shortfall. Selection is not the same as outperformance: in most rounds RangeKeeper tied a baseline on every scored axis and was chosen by evaluation order — the <a href="#/arena">arena history</a> shows which.
       </p>
     </div>
   );

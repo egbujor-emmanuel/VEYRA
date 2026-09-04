@@ -165,6 +165,12 @@ export interface ScoredProposal {
   metrics: ProposalMetrics;
   score: ScoreBreakdown;
   isWinner: boolean;
+  /**
+   * Set only on the winner, and only when the win was a tie broken by list order: the candidates
+   * listed here matched it on BOTH total score and gas. Present so a tied outcome is never
+   * reported as if the winner had scored higher.
+   */
+  wonByTiebreak?: string[];
 }
 
 export interface EvaluationResult {

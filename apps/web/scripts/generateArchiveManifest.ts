@@ -196,6 +196,88 @@ function summarizeCategory(category: string, roundsDirName: string, runsDirName?
   };
 }
 
+/**
+ * Per-round summary for the Arena History page.
+ *
+ * That page rendered seven identical "Round #N -- view" rows, because the manifest carried only
+ * the round IDs. A visitor could not tell one round from another without opening each in turn,
+ * which is the opposite of what an evidence page is for. Everything below is already in the
+ * round file; it had simply never been surfaced.
+ */
+interface ArenaRoundSummary {
+  roundId: number;
+  winnerCandidateId: string | null;
+  winnerAction: string | null;
+  winnerScore: number | null;
+  /** True when the winner is VEYRA's own agent rather than a baseline. */
+  wonByOurAgent: boolean;
+  candidateCount: number;
+  runnerUpCandidateId: string | null;
+  runnerUpScore: number | null;
+  /** True when the winner tied the runner-up on BOTH score and gas, so list order decided it. */
+  decidedByOrdering: boolean;
+  observedAtBlock: string | null;
+  generatedAt: string | null;
+}
+
+function summarizeArenaRounds(dirName: string): ArenaRoundSummary[] {
+  const dir = resolve(DOCS_DIR, dirName);
+  if (!existsSync(dir)) return [];
+
+  const out: ArenaRoundSummary[] = [];
+  for (const file of readdirSync(dir).filter((f) => f.endsWith(".json")).sort()) {
+    const round = JSON.parse(readFileSync(resolve(dir, file), "utf-8"));
+    const proposals: Array<Record<string, unknown>> = Array.isArray(round.proposals) ? round.proposals : [];
+    // Prefer the explicit winner flag; fall back to matching the round's declared winner id, since
+    // older archives set one but not always the other.
+    const winner =
+      proposals.find((pr) => pr.isWinner === true) ??
+      proposals.find((pr) => pr.candidateId === round.winnerCandidateId) ??
+      null;
+    const action = winner?.proposedAction as { kind?: string } | undefined;
+    const score = winner?.score as { totalScore?: number } | undefined;
+
+    // The runner-up and its score are what make a round legible: a 75-vs-70 win is a different
+    // claim from a 75-vs-20 one, and without it every row reads as "our agent won" with no margin.
+    const scoreOf = (pr: Record<string, unknown>) => {
+      const sc = pr.score as { totalScore?: number } | undefined;
+      return typeof sc?.totalScore === "number" ? sc.totalScore : null;
+    };
+    const runnerUp = proposals
+      .filter((pr) => pr !== winner && scoreOf(pr) !== null)
+      .sort((a, b) => (scoreOf(b) as number) - (scoreOf(a) as number))[0];
+
+    // Recomputed here rather than read from the file: these archives were written before the
+    // evaluator recorded ties (see evaluatorKernel.ts wonByTiebreak), and back-editing them to
+    // add the field would be rewriting history. The inputs are all still in the record, so the
+    // tie can be derived from them honestly.
+    const gasOf = (pr?: Record<string, unknown>) =>
+      (pr?.metrics as { estimatedGasWei?: string } | undefined)?.estimatedGasWei ?? null;
+    const decidedByOrdering =
+      !!winner &&
+      !!runnerUp &&
+      scoreOf(runnerUp) === scoreOf(winner) &&
+      gasOf(runnerUp) !== null &&
+      gasOf(runnerUp) === gasOf(winner);
+
+    out.push({
+      roundId: Number(round.roundId),
+      winnerCandidateId: (round.winnerCandidateId as string) ?? null,
+      winnerAction: action?.kind ?? null,
+      winnerScore: typeof score?.totalScore === "number" ? score.totalScore : null,
+      wonByOurAgent: winner?.agentIdOnChain != null,
+      candidateCount: proposals.length,
+      runnerUpCandidateId: (runnerUp?.candidateId as string) ?? null,
+      runnerUpScore: runnerUp ? scoreOf(runnerUp) : null,
+      decidedByOrdering,
+      // Distinct per round, and the one field a reader can check against an explorer themselves.
+      observedAtBlock: round.observedAtBlock != null ? String(round.observedAtBlock) : null,
+      generatedAt: (round.generatedAt as string) ?? null,
+    });
+  }
+  return out.sort((a, b) => b.roundId - a.roundId);
+}
+
 function main() {
   mkdirSync(GENERATED_DIR, { recursive: true });
   mkdirSync(PUBLIC_DATA_RUNS_DIR, { recursive: true });
@@ -233,6 +315,15 @@ function main() {
       effectiveOutcome,
       effectiveExecuted,
       amendment: amendment ? { sourceFile: amendment.file, newPositionTokenId: amendment.record.newPosition.tokenId } : null,
+      // Cost and date of the run, so Execution History can show what a run actually did rather
+      // than only whether it succeeded. Counts the amendment's transactions too, since a resumed
+      // run's real cost is both halves.
+      transactionCount: collectTransactions(record).length + (amendment ? collectTransactions(amendment.record).length : 0),
+      gasUsed: (
+        collectTransactions(record).reduce((sum, t) => sum + BigInt(t.gasUsed || "0"), 0n) +
+        (amendment ? collectTransactions(amendment.record).reduce((sum, t) => sum + BigInt(t.gasUsed || "0"), 0n) : 0n)
+      ).toString(),
+      generatedAt: latestTimestamp(amendment ? amendment.record : record),
     };
   });
 
@@ -280,6 +371,7 @@ function main() {
     entries,
     latestRoundId,
     arenaRoundIds,
+    arenaRounds: summarizeArenaRounds("arena-rounds-v2"),
     categories,
   };
   writeFileSync(resolve(GENERATED_DIR, "archiveManifest.json"), JSON.stringify(manifest, null, 2));

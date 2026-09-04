@@ -44,6 +44,8 @@ export interface ScoredProposalV2 {
   metrics: ProposalMetricsV2;
   score: ScoreBreakdown;
   isWinner: boolean;
+  /** See ScoredProposal.wonByTiebreak -- set only when the win was a tie broken by list order. */
+  wonByTiebreak?: string[];
 }
 
 export interface EvaluationResultV2 {

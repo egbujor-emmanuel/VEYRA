@@ -42,7 +42,13 @@ export function scoreProposals<M extends ProposalMetrics>(
       weights.gas * normalized.gas +
       weights.feasibility * normalized.feasibility;
 
-    return { proposal, metrics: metrics[i]!, score: { weights, normalized, totalScore }, isWinner: false };
+    return {
+      proposal,
+      metrics: metrics[i]!,
+      score: { weights, normalized, totalScore },
+      isWinner: false,
+      wonByTiebreak: undefined as string[] | undefined,
+    };
   });
 
   const winner = scored.reduce((best, current) => {
@@ -53,6 +59,24 @@ export function scoreProposals<M extends ProposalMetrics>(
     return best;
   });
   winner.isWinner = true;
+
+  // Record when the "win" was not actually a win.
+  //
+  // Rounds 2-7 of the real archive all came out 75-75 between rangekeeper-v1 and
+  // baseline-symmetric-range, with identical gas -- so the reduce above kept the first-listed
+  // proposal, which happens to be ours. That is arbitrary, and reporting it as a win over a
+  // baseline would overstate what the evaluator found. The selection rule is deliberately left
+  // unchanged (it must stay deterministic, and rewriting it would not make the old rounds any
+  // less tied); what changes is that a tie is now stated rather than hidden behind isWinner.
+  const tiedWith = scored
+    .filter(
+      (s) =>
+        s !== winner &&
+        s.score.totalScore === winner.score.totalScore &&
+        s.metrics.estimatedGasWei === winner.metrics.estimatedGasWei,
+    )
+    .map((s) => s.proposal.candidateId);
+  if (tiedWith.length > 0) winner.wonByTiebreak = tiedWith;
 
   return { scored, winner };
 }

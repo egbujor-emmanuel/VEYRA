@@ -114,6 +114,14 @@ score = 0.25 × normalized(estimatedFeeEfficiency)
 - `HoldAction` proposals are scored on the *current* position's own metrics (no fee-efficiency delta assumed, full feasibility, current range's own risk score) — a neutral baseline, not artificially penalized for "doing nothing."
 - **The only permitted weight deviation:** if `job.constraints.riskTolerance === "low"`, shift to `0.40 × risk, 0.10 × feeEfficiency, 0.25 × gas, 0.25 × feasibility`. One documented rule, applied identically every time — not a per-job invented number.
 - Winner = highest total score. Ties broken by lowest `estimatedGasWei`.
+- **Observed limitation (rounds 2-7, real archives).** When score *and* gas both tie, the reduce keeps
+  the first-listed candidate — which is ours. In rounds 2-7 `rangekeeper-v1` and
+  `baseline-symmetric-range` both scored 75 on identical gas, so evaluation order decided every one
+  of those rounds; in round 1 `baseline-hold` outscored ours 100-75. Our strategy has therefore never
+  outscored a baseline under this formula. That is a fact about the axes (they cannot separate a
+  tick-aware range from a naive symmetric one at the same width and gas), not about the run records.
+  `scoreProposals` now sets `wonByTiebreak` on such a winner, and the Arena History page labels those
+  rounds "tied - order decided" rather than counting them as wins.
 - Every score, every component, every input is persisted (§4) — "why Agent B won" is always a query away, never a re-derived guess.
 
 Label this in the UI, verbatim: **"v1 scoring — equal-weighted, deterministic, no historical backtest data yet."** That sentence is doing real work: it pre-empts the exact criticism a judge would otherwise raise.
