@@ -30,6 +30,7 @@ import { privateKeyToAccount } from "viem/accounts";
 import { createClient as createAltanaClient, BNB_TESTNET, deserializeSession, signerFromPrivateKey } from "@altananetwork/sdk";
 import { hasLiveVeyraSession, readOwnedPositions, managePosition } from "./managePositions.mjs";
 import { manageHealthFactor } from "./manageHealthFactor.mjs";
+import { manageGrid } from "./manageGrid.mjs";
 import { evaluateV2, rangeKeeperStrategy, baselineHoldStrategy } from "@veyra/core";
 import { readPositionObservation, toMarketSnapshot } from "@veyra/chain/positionReader";
 import { createSigner } from "@veyra/chain/txSigner";
@@ -402,6 +403,15 @@ async function tick(signer, state) {
     log(`health-factor monitoring failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
   }
 
+  // Grid Trading: recenter slots price has left behind. Isolated like the two above -- a grid
+  // failure logs and moves on rather than taking the whole pass down with it.
+  try {
+    const grid = await manageGrid({ client, wallet: walletProvider, account: VEYRA_WALLET, docsDir: resolve(REPO, "docs"), log });
+    managed += grid.executed ?? 0;
+  } catch (err) {
+    log(`grid management failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
+  }
+
   saveState(state);
   return delivered + managed;
 }
@@ -416,11 +426,15 @@ log(`  poll     : every ${POLL_MS / 1000}s`);
 materializeCredentials();
 
 const { EVMWalletProvider } = await import("@bnbagent/sdk");
-const signer = createSigner(
-  client,
-  new EVMWalletProvider({ password: readWalletPassword(), address: VEYRA_WALLET, walletsDir: resolve(REPO, "smoketest/.studio/wallets"), persist: true }),
-  CHAIN_ID,
-);
+// Held in a variable rather than constructed inline: runGridOrchestratorLoop signs with the
+// wallet provider directly, not through the Signer wrapper.
+const walletProvider = new EVMWalletProvider({
+  password: readWalletPassword(),
+  address: VEYRA_WALLET,
+  walletsDir: resolve(REPO, "smoketest/.studio/wallets"),
+  persist: true,
+});
+const signer = createSigner(client, walletProvider, CHAIN_ID);
 
 const state = loadState();
 const once = process.argv.includes("--once");
