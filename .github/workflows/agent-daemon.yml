@@ -2,9 +2,15 @@
 # keyboard. Previously the daemon was a real process that had to be started by hand, which meant
 # delivery was automatic only while someone happened to be running it.
 #
-# Cron granularity on GitHub Actions is ~5 minutes and scheduled runs can be delayed under load,
-# so this is "checked every few minutes", not "instant". That is honest and adequate: escrow jobs
-# have 24-hour expiries.
+# The schedule below asks for every ten minutes. GitHub does not deliver that -- scheduled
+# workflows are throttled hard on free runners. Measured over ten consecutive scheduled runs on
+# 3-4 Sep 2026: median 2h48m between passes, fastest 2h01m, slowest 4h50m. The cron expression is
+# a request, not a guarantee.
+#
+# Left at */10 deliberately: asking for more often costs nothing and takes whatever GitHub gives.
+# But nothing in this repo should describe the daemon as running every ten minutes -- it runs a few
+# times a day, which is adequate against 24-hour escrow expiries and a position that drifts about a
+# ten-thousandth of a percent per pass.
 #
 # SETUP -- three repository secrets are required before this does anything:
 #   VEYRA_WALLET_PASSWORD    the operator keystore password

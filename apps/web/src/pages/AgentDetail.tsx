@@ -56,20 +56,37 @@ function DecisionRule({ children }: { children: React.ReactNode }) {
  *
  * This panel used to render the same sentence on all four pages: VEYRA acts on a schedule and
  * does not need the tab open. That is true of rebalancing and health-factor monitoring, which the
- * daemon runs every ten minutes. It was not true of grid trading or yield optimisation, which only
+ * daemon runs on a schedule. It was not true of grid trading or yield optimisation, which only
  * ever ran when an operator invoked the orchestrator. Rather than qualify it vaguely, each page
  * now says which of the two it is, and why.
  */
 type Scheduling = "scheduled" | "on-demand";
 
+/**
+ * What the schedule actually delivers, measured rather than assumed.
+ *
+ * The cron asks for every ten minutes, and quoting that as the real cadence was wrong by more than a
+ * factor of twenty: GitHub throttles scheduled workflows hard on free runners. The figures below
+ * come from the ten consecutive scheduled runs in this repo's own Actions history, which anyone
+ * can check.
+ */
+const CADENCE =
+  "The workflow asks for every ten minutes; GitHub delivers scheduled runs far less often than that on free runners. Measured across ten consecutive scheduled runs on 3-4 Sep 2026: median 2h48m between passes, fastest 2h01m, slowest 4h50m.";
+
 const SCHEDULING: Record<JobCategory, { mode: Scheduling; note: string }> = {
   rebalance: {
     mode: "scheduled",
-    note: "The daemon runs every ten minutes against every account that has granted VEYRA a live, scoped session. It does not need this tab open — activating here only turns on live reads so you can watch the state it works from.",
+    note:
+      "The daemon runs against every account that has granted VEYRA a live, scoped session, and does not need this tab open — activating here only turns on live reads so you can watch the state it works from. " +
+      CADENCE +
+      " Adequate against 24-hour job expiries, but it is a few times a day, not continuous, and saying otherwise would overstate it.",
   },
   "health-factor-monitoring": {
     mode: "scheduled",
-    note: "The daemon reads this position every ten minutes and repays without being asked once the ratio crosses the threshold. It does not need this tab open.",
+    note:
+      "The daemon reads this position and repays without being asked once the ratio crosses the threshold. It does not need this tab open. " +
+      CADENCE +
+      " The position drifts on accrued interest by roughly a ten-thousandth of a percent per pass, so hours between checks is comfortably inside the margin.",
   },
   "grid-trading": {
     mode: "on-demand",

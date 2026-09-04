@@ -139,8 +139,14 @@ closes, and never settles a client-evaluated one — that decision belongs to th
 nobody at a keyboard. Credentials come from repository secrets
 (`VEYRA_WALLET_PASSWORD`, `VEYRA_KEYSTORE_JSON`, `VEYRA_AGENT_SESSION_JSON`) — the keystore is
 never committed, and the workflow skips with a warning rather than failing if they are unset.
-Cron granularity is ~10 minutes and scheduled runs can be delayed under load, so this is "checked
-every few minutes", not instant — which is fine against 24-hour job expiries.
+The workflow asks for every ten minutes. GitHub does not deliver that: scheduled workflows are
+throttled hard on free runners. Measured across ten consecutive scheduled runs on 3-4 Sep 2026, the
+gaps were **median 2h48m, fastest 2h01m, slowest 4h50m** — the repo's own Actions history is the
+source, and anyone can recompute it. So this is "checked a few times a day", not "every ten
+minutes" and certainly not instant. That is adequate against 24-hour job expiries and against a
+Venus position that drifts about a ten-thousandth of a percent per pass, but the cron expression is
+a request, not a guarantee, and quoting it as the real cadence would overstate the system by more
+than a factor of twenty.
 
 Verified end to end: the daemon discovered jobs #924 and #939 on its own, delivered both, then on
 a later pass settled #924 once its dispute window closed — `Completed`, and VEYRA was paid.
