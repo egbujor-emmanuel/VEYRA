@@ -3,6 +3,7 @@ import { ArrowRight, Fingerprint, ShieldCheck, Timer } from "lucide-react";
 import { AGENT_CATALOG } from "../data/agentCatalog";
 import { MaturityBadge } from "../components/MaturityBadge";
 import { AgentTrackRecord } from "../components/AgentTrackRecord";
+import { ProofBar } from "../components/ProofBar";
 import { StatusTicker } from "../components/StatusTicker";
 import { WalletPanel } from "../components/WalletPanel";
 import { DepositPanel } from "../components/DepositPanel";
@@ -59,7 +60,10 @@ export function Marketplace() {
             <span className="text-foreground">Your funds never leave your own account.</span>
           </p>
 
-          <div className="mt-12 grid gap-px overflow-hidden rounded-[14px] border border-white/[0.08] bg-white/[0.06] sm:grid-cols-3">
+          {/* Proof before promises: the aggregate on-chain record, above the fold. */}
+          <ProofBar />
+
+          <div className="mt-8 grid gap-px overflow-hidden rounded-[14px] border border-white/[0.08] bg-white/[0.06] sm:grid-cols-3">
             {GUARANTEES.map(({ icon: Icon, title, body }) => (
               <div key={title} className="bg-background/60 p-6 backdrop-blur-sm">
                 <Icon className="mb-3 text-accent" />
