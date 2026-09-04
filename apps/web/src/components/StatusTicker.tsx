@@ -12,13 +12,19 @@ const ITEMS: { label: string; state: string; live: boolean }[] = [
 ];
 
 export function StatusTicker() {
-  // Rendered twice so the marquee wraps seamlessly.
+  // Rendered twice so the marquee wraps seamlessly: the animation translates by exactly -50%,
+  // so the second copy is in the first one's place at the moment it loops.
   const run = [...ITEMS, ...ITEMS];
   return (
-    <div className="ticker">
-      <div className="ticker-track">
+    <div className="ticker" aria-label="Live infrastructure status">
+      {/* animate-marquee was defined in the stylesheet but never applied here, so this strip sat
+          static while a fade mask clipped it mid-word at both edges -- which read as broken
+          truncation rather than a marquee. */}
+      <div className="ticker-track animate-marquee">
         {run.map((item, i) => (
-          <span className="ticker-item" key={i}>
+          <span className="ticker-item" key={i} aria-hidden={i >= ITEMS.length}>
+            {/* A dot carries "live" at a glance; six shouted green words competed with the nav. */}
+            <span className={`ticker-dot${item.live ? "" : " off"}`} />
             {item.label}
             <span className={`state${item.live ? "" : " off"}`}>{item.state}</span>
           </span>

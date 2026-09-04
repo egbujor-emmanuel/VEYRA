@@ -366,10 +366,28 @@
   /* ---- ticker ---- */
   .ticker {
     overflow: hidden;
-    border-block: 1px solid oklch(1 0 0 / 0.07);
-    background: oklch(1 0 0 / 0.02);
-    padding: 11px 0;
-    mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+    /* No top border: it sat directly beneath the sticky nav's own border, reading as a doubled
+       rule. The strip is secondary to the nav and should not draw a second hard line under it. */
+    border-bottom: 1px solid oklch(1 0 0 / 0.06);
+    background: oklch(1 0 0 / 0.015);
+    padding: 10px 0;
+    /* A longer fade: at 8% the mask cut words in half hard enough to look like clipped text. */
+    mask-image: linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent);
+  }
+  /* Courtesy: stop the scroll while someone is trying to read it. */
+  .ticker:hover .ticker-track {
+    animation-play-state: paused;
+  }
+  .ticker-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--color-success);
+    flex: none;
+    opacity: 0.75;
+  }
+  .ticker-dot.off {
+    background: var(--color-muted-foreground);
   }
   .ticker-track {
     display: flex;
@@ -468,11 +486,13 @@
   .dot-warn { background: var(--color-warning); }
   .dot-bad { background: var(--color-danger); }
 
+  /* Muted, not shouted. The dot already says "live"; this is the detail, not the headline. */
   .state {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 10.5px;
     letter-spacing: 0.08em;
-    color: var(--color-success);
+    color: var(--color-muted-foreground);
+    opacity: 0.75;
   }
   .state.off {
     color: var(--color-muted-foreground);
