@@ -31,6 +31,9 @@ import { createClient as createAltanaClient, BNB_TESTNET, deserializeSession, si
 import { hasLiveVeyraSession, readOwnedPositions, managePosition } from "./managePositions.mjs";
 import { manageHealthFactor } from "./manageHealthFactor.mjs";
 import { manageGrid } from "./manageGrid.mjs";
+
+/** See the grid block in runOnce(). Off until the swap failure is fixed and #37091 is restored. */
+const GRID_DAEMON_ENABLED = false;
 import { evaluateV2, rangeKeeperStrategy, baselineHoldStrategy } from "@veyra/core";
 import { readPositionObservation, toMarketSnapshot } from "@veyra/chain/positionReader";
 import { createSigner } from "@veyra/chain/txSigner";
@@ -403,13 +406,21 @@ async function tick(signer, state) {
     log(`health-factor monitoring failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
   }
 
-  // Grid Trading: recenter slots price has left behind. Isolated like the two above -- a grid
-  // failure logs and moves on rather than taking the whole pass down with it.
-  try {
-    const grid = await manageGrid({ client, wallet: walletProvider, account: VEYRA_WALLET, docsDir: resolve(REPO, "docs"), log });
-    managed += grid.executed ?? 0;
-  } catch (err) {
-    log(`grid management failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
+  // Grid Trading: DISABLED pending investigation, deliberately not deleted.
+  //
+  // Its first scheduled run recentered slot 0 as intended up to the ratio-fixing swap, which
+  // failed -- leaving #37091 decreased and collected but never re-minted, i.e. its capital sitting
+  // loose in the wallet instead of deployed. A ten-minute retry loop against a broken execution
+  // path spends real gas to fail repeatedly, so the switch goes off first and the diagnosis
+  // happens after. Re-enable only once the swap failure is understood and the drained slot is
+  // restored.
+  if (GRID_DAEMON_ENABLED) {
+    try {
+      const grid = await manageGrid({ client, wallet: walletProvider, account: VEYRA_WALLET, docsDir: resolve(REPO, "docs"), log });
+      managed += grid.executed ?? 0;
+    } catch (err) {
+      log(`grid management failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
+    }
   }
 
   saveState(state);
