@@ -10,6 +10,7 @@ import { writeFileSync, mkdirSync, readdirSync } from "node:fs";
 import { randomUUID, createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
+import type { Address } from "viem";
 import { createPublicClient, http } from "viem";
 import {
   evaluateV2,
@@ -21,6 +22,7 @@ import {
   type JobSpec,
 } from "@veyra/core";
 import { ensureTestnetRpcOverride } from "../src/network.js";
+import { readRealizedVolatility } from "../src/volatilityReader.js";
 import { readPositionObservation, toMarketSnapshot } from "../src/positionReader.js";
 import { simulateLive } from "../src/simulate.js";
 
@@ -67,8 +69,10 @@ async function main() {
 
   section("READ-ONLY v2 verification -- no signer, no transaction, ever, in this script");
   const observation = await readPositionObservation(client, VEYRA_POSITION_TOKEN_ID);
-  const snapshot = toMarketSnapshot(observation, { recentVolatilityBps: 0 });
+  const volatility = await readRealizedVolatility(client, observation.poolAddress as Address);
+  const snapshot = toMarketSnapshot(observation, { recentVolatilityBps: volatility.volatilityBps ?? 0 });
   console.log(`Position #${VEYRA_POSITION_TOKEN_ID}: current tick ${observation.currentTick}, range [${observation.tickLower}, ${observation.tickUpper})`);
+  console.log(`recentVolatilityBps: ${volatility.volatilityBps ?? "unmeasured"} [${volatility.provenance}] -- ${volatility.detail}`);
 
   const job: JobSpec = {
     jobId: `v2-readonly-${randomUUID()}`,
@@ -122,7 +126,12 @@ async function main() {
     positionTokenId: VEYRA_POSITION_TOKEN_ID.toString(),
     observedAtBlock: observation.blockNumber.toString(),
     observed: bigintsToStrings({ ...observation }),
-    marketSnapshot: { ...(bigintsToStrings(snapshot) as Record<string, unknown>), recentVolatilityBpsProvenance: "SUPPLIED_NOT_OBSERVED" },
+    marketSnapshot: {
+      ...(bigintsToStrings(snapshot) as Record<string, unknown>),
+      recentVolatilityBpsProvenance: volatility.provenance,
+      recentVolatilityDetail: volatility.detail,
+      observationCardinality: volatility.observationCardinality,
+    },
     job: bigintsToStrings(job),
     proposals: result.scored.map((s) => ({ ...(bigintsToStrings(s.proposal) as Record<string, unknown>), metrics: bigintsToStrings(s.metrics), score: s.score, isWinner: s.isWinner })),
     winnerCandidateId: result.winner.proposal.candidateId,

@@ -65,11 +65,15 @@
     "./gridOrchestrator": {
       "types": "./dist/src/gridOrchestrator.d.ts",
       "default": "./dist/src/gridOrchestrator.js"
+    },
+    "./volatilityReader": {
+      "types": "./dist/src/volatilityReader.d.ts",
+      "default": "./dist/src/volatilityReader.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "tsc -p tsconfig.json && node --test dist/test/positionReader.test.js dist/test/altanaExecutor.test.js dist/test/sessionPause.test.js dist/test/relayHealthCheck.test.js",
+    "test": "tsc -p tsconfig.json && node --test dist/test/positionReader.test.js dist/test/altanaExecutor.test.js dist/test/sessionPause.test.js dist/test/relayHealthCheck.test.js dist/test/volatilityReader.test.js",
     "test:live": "tsc -p tsconfig.json && node --test dist/test/positionReader.live.test.js dist/test/simulate.live.test.js"
   },
   "dependencies": {

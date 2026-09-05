@@ -55,6 +55,8 @@ export function ArenaHistory() {
   /** Rounds recorded before rangeKeeper stopped being a rename of the symmetric baseline. */
   const LAST_DEGENERATE_ROUND = 7;
   const recent = rounds.filter((r) => r.roundId > LAST_DEGENERATE_ROUND);
+  /** Rounds arrive newest-first, so the earliest post-fix round is the last of them. */
+  const firstHonestRound = recent.length > 0 ? recent[recent.length - 1]! : null;
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-6 pb-16 pt-12">
@@ -77,10 +79,11 @@ export function ArenaHistory() {
         That is fixed now. rangeKeeper declines to reposition a position still sitting in the middle half of
         its range, and widens on the overshoot it can actually measure rather than on a volatility number
         nobody supplies.{" "}
-        {recent.length > 0 && (
+        {firstHonestRound && (
           <span className="text-foreground">
-            In round {recent[0]!.roundId} the two proposed genuinely different ranges for the first time, and
-            ours lost by {Math.abs((recent[0]!.winnerScore ?? 0) - (recent[0]!.runnerUpScore ?? 0)).toFixed(2)}{" "}
+            In round {firstHonestRound.roundId} the two proposed genuinely different ranges for the first
+            time, and ours lost by{" "}
+            {Math.abs((firstHonestRound.winnerScore ?? 0) - (firstHonestRound.runnerUpScore ?? 0)).toFixed(2)}{" "}
             points.
           </span>
         )}{" "}

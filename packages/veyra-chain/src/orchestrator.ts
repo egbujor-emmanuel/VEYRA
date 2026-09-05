@@ -32,6 +32,7 @@ import {
   type RunRecord,
   type ExecutionPolicy,
 } from "@veyra/core";
+import { readRealizedVolatility } from "./volatilityReader.js";
 import { readPositionObservation, toMarketSnapshot } from "./positionReader.js";
 import { simulateLive } from "./simulate.js";
 import { executeRebalanceForPosition } from "./rebalanceExecutor.js";
@@ -121,7 +122,12 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
 
   // --- OBSERVE ---
   const observation = await readPositionObservation(opts.client, opts.positionTokenId);
-  const snapshot = toMarketSnapshot(observation, { recentVolatilityBps: 0 });
+  // Volatility is READ, not assumed. When the pool oracle cannot support a measurement the
+  // reading says so and the snapshot carries 0 -- but the archive records which of those two
+  // situations produced the number, because "calm market" and "could not measure" are different
+  // claims and this project spent seven rounds conflating them.
+  const volatility = await readRealizedVolatility(opts.client, observation.poolAddress as Address);
+  const snapshot = toMarketSnapshot(observation, { recentVolatilityBps: volatility.volatilityBps ?? 0 });
   run = transition(run, "EVALUATE");
 
   const job: JobSpec = {
@@ -174,7 +180,12 @@ export async function runAgentArenaLoop(opts: RunAgentArenaLoopOpts): Promise<Ag
     positionTokenId: opts.positionTokenId.toString(),
     observedAtBlock: observation.blockNumber.toString(),
     observed: bigintsToStrings({ ...observation }),
-    marketSnapshot: { ...(bigintsToStrings(snapshot) as Record<string, unknown>), recentVolatilityBpsProvenance: "SUPPLIED_NOT_OBSERVED" },
+    marketSnapshot: {
+      ...(bigintsToStrings(snapshot) as Record<string, unknown>),
+      recentVolatilityBpsProvenance: volatility.provenance,
+      recentVolatilityDetail: volatility.detail,
+      observationCardinality: volatility.observationCardinality,
+    },
     job: bigintsToStrings(job),
     proposals: evaluationResult.scored.map((s) => ({ ...(bigintsToStrings(s.proposal) as Record<string, unknown>), metrics: bigintsToStrings(s.metrics), score: s.score, isWinner: s.isWinner })),
     winnerCandidateId: winner.proposal.candidateId,
