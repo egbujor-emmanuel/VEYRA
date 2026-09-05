@@ -60,7 +60,19 @@ export interface ResolveLivePositionOpts {
    * is ambiguous and grows more so with every category.
    */
   poolAddress?: Address;
+  /**
+   * Width bounds, in ticks. The rebalance position and the grid slots share one pool, so a pool
+   * filter alone cannot separate them -- but their widths differ by construction: a grid slot is a
+   * narrow resting band (8 tick-spacings) while the rebalance range is wide (40). Filtering on
+   * width avoids both a hardcoded id list and the circular "exclude the grid to find the rebalance,
+   * exclude the rebalance to find the grid".
+   */
+  minWidthTicks?: number;
+  maxWidthTicks?: number;
 }
+
+/** Anything narrower than this in the shared pool is a grid slot, not the rebalance range. */
+export const GRID_SLOT_MAX_WIDTH_TICKS = 1_000;
 
 /**
  * Returns the position the wallet actually has liquidity in.
@@ -107,6 +119,9 @@ export async function resolveLivePositionTokenId(
         });
         if ((pool as string).toLowerCase() !== wantPool) continue;
       }
+      const widthTicks = Number(p[6]) - Number(p[5]);
+      if (opts.minWidthTicks !== undefined && widthTicks < opts.minWidthTicks) continue;
+      if (opts.maxWidthTicks !== undefined && widthTicks > opts.maxWidthTicks) continue;
       funded.push(id);
     } catch {
       // A position that cannot be read is not a candidate; keep going rather than failing the pass.
@@ -134,4 +149,38 @@ export async function resolveLivePositionTokenId(
       (constantIsFunded ? `kept the configured ${VEYRA_LIVE_POSITION_TOKEN_ID}` : `took the first`),
     candidates: funded,
   };
+}
+
+
+/**
+ * Every funded grid slot in the pool, ordered by price band.
+ *
+ * Grid slots go stale faster than anything else here: recentering one burns it and mints a new
+ * token id, so a hardcoded list is wrong the moment the agent does its job. That happened twice in
+ * one session -- #37092 became #37093, then #37091 became #37270 -- with the id written out in
+ * three separate files each time.
+ *
+ * Returns them sorted by tickLower so slot ordering is positional and stable rather than depending
+ * on mint order.
+ */
+export async function resolveGridPositionTokenIds(
+  client: PublicClient,
+  owner: Address,
+  poolAddress: Address,
+): Promise<bigint[]> {
+  const resolution = await resolveLivePositionTokenId(client, owner, {
+    poolAddress,
+    maxWidthTicks: GRID_SLOT_MAX_WIDTH_TICKS,
+  });
+  // resolveLivePositionTokenId returns every match in `candidates`; for grid we want all of them,
+  // not the single winner it picks.
+  const ids = resolution.candidates.length > 0 ? resolution.candidates : [];
+
+  const withRange = await Promise.all(
+    ids.map(async (id) => {
+      const p = await client.readContract({ address: NFPM, abi: POSITIONS_ABI, functionName: "positions", args: [id] });
+      return { id, tickLower: Number(p[5]) };
+    }),
+  );
+  return withRange.sort((a, b) => a.tickLower - b.tickLower).map((x) => x.id);
 }

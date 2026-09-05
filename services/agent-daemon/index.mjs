@@ -49,11 +49,13 @@ import { evaluateV2, rangeKeeperStrategy, baselineHoldStrategy } from "@veyra/co
 import { readPositionObservation, toMarketSnapshot } from "@veyra/chain/positionReader";
 import { createSigner } from "@veyra/chain/txSigner";
 import { PANCAKE_V3_TESTNET, VEYRA_LIVE_POSITION_TOKEN_ID } from "@veyra/chain/testnetAddresses";
-import { resolveLivePositionTokenId } from "@veyra/chain/positionDiscovery";
+import {
+  resolveLivePositionTokenId, resolveGridPositionTokenIds, GRID_SLOT_MAX_WIDTH_TICKS,
+} from "@veyra/chain/positionDiscovery";
 
 /** The pool holding the rebalance position and both grid slots. Yield lives in a different one. */
 const GRID_TRADING_POOL = "0x61c17A2C050facFdf8651b576Bc898596f5223b9";
-const GRID_POSITION_TOKEN_IDS = [37091n, 37093n];
+let GRID_POSITION_TOKEN_IDS = [];
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "../..");
@@ -429,7 +431,10 @@ async function tick(signer, state) {
   // GRID_DAEMON_ENABLED for why this was off for a while and what had to change to turn it back on.
   if (GRID_DAEMON_ENABLED) {
     try {
-      const grid = await manageGrid({ client, wallet: walletProvider, account: VEYRA_WALLET, docsDir: resolve(REPO, "docs"), log });
+      const grid = await manageGrid({
+      client, wallet: walletProvider, account: VEYRA_WALLET,
+      docsDir: resolve(REPO, "docs"), log, gridPositionTokenIds: GRID_POSITION_TOKEN_IDS,
+    });
       managed += grid.executed ?? 0;
     } catch (err) {
       log(`grid management failed: ${(err.shortMessage ?? err.message ?? String(err)).slice(0, 200)}`);
@@ -452,12 +457,17 @@ materializeCredentials();
 // Ask the chain which position we are actually managing, rather than trusting the constant. The
 // grid slots are excluded by id and the yield positions by pool, leaving exactly one candidate.
 try {
+  // Width separates them: grid slots are narrow resting bands, the rebalance range is wide. That
+  // avoids both a hardcoded id list and the circular "exclude the grid to find the rebalance".
   const resolved = await resolveLivePositionTokenId(client, VEYRA_WALLET, {
-    excludeTokenIds: GRID_POSITION_TOKEN_IDS,
     poolAddress: GRID_TRADING_POOL,
+    minWidthTicks: GRID_SLOT_MAX_WIDTH_TICKS,
   });
   POSITION_TOKEN_ID = resolved.tokenId;
   log(`  position : #${resolved.tokenId} (${resolved.source} -- ${resolved.detail})`);
+
+  GRID_POSITION_TOKEN_IDS = await resolveGridPositionTokenIds(client, VEYRA_WALLET, GRID_TRADING_POOL);
+  log(`  grid     : ${GRID_POSITION_TOKEN_IDS.length ? GRID_POSITION_TOKEN_IDS.map((i) => `#${i}`).join(", ") : "none discovered"}`);
 } catch (err) {
   log(`  position : #${POSITION_TOKEN_ID} (discovery failed, using configured id -- ${(err.message ?? err).toString().slice(0, 100)})`);
 }

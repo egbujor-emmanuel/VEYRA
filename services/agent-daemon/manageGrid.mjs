@@ -10,9 +10,6 @@
 // SIMULATE -> authorize -> execute path, with the same execution policy gate, that produced the
 // archived grid run. Nothing here decides anything; the strategy does.
 
-/** The two real grid slots on BSC testnet. Mirrors apps/web GRID_POSITION_TOKEN_IDS. */
-const GRID_POSITION_TOKEN_IDS = [37091n, 37093n];
-
 /**
  * Runs one grid pass. Returns a small record either way, so a quiet pass is still auditable --
  * "we looked and every slot was in range" is a result.
@@ -21,7 +18,15 @@ const GRID_POSITION_TOKEN_IDS = [37091n, 37093n];
  * is the on-chain transaction and this log line, exactly as it already is for the health-factor
  * repays and the session-scoped rebalances.
  */
-export async function manageGrid({ client, wallet, account, docsDir, log }) {
+export async function manageGrid({ client, wallet, account, docsDir, log, gridPositionTokenIds }) {
+  // Passed in, never hardcoded. Recentering a slot burns it and mints a new token id, so a literal
+  // list here is wrong the moment this function succeeds -- which is exactly what happened when
+  // #37091 became #37270 and three separate files still named the old one.
+  if (!gridPositionTokenIds || gridPositionTokenIds.length === 0) {
+    log?.("  grid: no slots discovered -- skipping");
+    return { decision: "skip", executed: 0 };
+  }
+
   // Imported dynamically, inside the caller's try/catch, on purpose. A static import that fails
   // to resolve is a LOAD-time error: it kills the process before any handler can see it, which is
   // exactly what happened when this module first shipped without a matching entry in
@@ -33,7 +38,7 @@ export async function manageGrid({ client, wallet, account, docsDir, log }) {
   const result = await runGridOrchestratorLoop({
     client,
     wallet,
-    gridPositionTokenIds: GRID_POSITION_TOKEN_IDS,
+    gridPositionTokenIds,
     ownerWallet: account,
     docsDir,
   });

@@ -23,7 +23,10 @@ export const BSCSCAN_TESTNET_TX_BASE = "https://testnet.bscscan.com/tx/";
 // Slot 0 (#37091) held at the ladder's own target; slot 1 was #37092, real-executed a recenter,
 // and is now #37093 -- see docs/grid-runs/run-0002.json + run-0002-resumed-mint.json.
 export const GRID_TRADING_POOL_ADDRESS = "0x61c17A2C050facFdf8651b576Bc898596f5223b9" as const;
-export const GRID_POSITION_TOKEN_IDS = [37091n, 37093n] as const;
+// FALLBACK ONLY -- liveReads.gridTrading.ts discovers these from chain. Kept so a page load
+// survives an RPC failure, not as the source of truth: slot 0 was #37091 until the daemon
+// recentered it into #37270 on 2026-09-05, and a hardcoded list is wrong the moment that happens.
+export const GRID_POSITION_TOKEN_IDS = [37270n, 37093n] as const;
 
 // ---- Yield Optimisation: REAL PancakeSwap V3 testnet pools, with organic trading history ----
 //
