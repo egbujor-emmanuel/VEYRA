@@ -283,15 +283,16 @@ Stated here rather than left to be discovered:
   substituting 0 — "calm market" and "could not measure" are different claims. No swaps were
   manufactured to fill the buffer faster.
 
-- **Grid Trading and Yield Optimisation are operator-invoked, not scheduled.** Rebalancing and
-  Health Factor monitoring run under the daemon. Grid was scheduled and taken back out after its
-  first pass stranded a slot; the underlying cause is fixed and it is scheduled again, but yield
-  stays manual deliberately — a migration moves the whole position on a signal the run record
-  itself calls unreliable on this testnet.
+- **Yield Optimisation is operator-invoked, not scheduled.** The other three run under the daemon.
+  Yield stays manual deliberately: a migration moves the whole position, and this run's own record
+  states the advantage it responded to was seeded rather than observed. Automating a capital move
+  on a signal the record itself calls unreliable would be the wrong thing to build.
 
-- **The live position id is a constant, not discovered.** A successful rebalance mints a new token
-  id; the id is defined once in `@veyra/chain` and imported, but still updated by hand. Runtime
-  discovery from the wallet's own positions is the durable fix.
+- **The evaluator's axes are still a fixed set of four.** Fee efficiency, risk, gas and
+  feasibility, equally weighted unless the job asks for low risk. They are scored on absolute
+  magnitude rather than rank, so a trivial improvement no longer beats doing nothing — but which
+  four axes to score on, and their weights, remain a design choice rather than something derived
+  from outcomes. Nothing here learns from whether a past decision turned out well.
 
 ## Running it
 
