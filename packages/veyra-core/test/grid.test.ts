@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
+  gridProximityScore,
   gridKeeperStrategy,
   baselineHoldGridStrategy,
   computeMetricsGrid,
@@ -354,4 +355,77 @@ test("evaluateGrid: recentering a stranded slot beats holding, even though it co
     gridKeeperStrategy(tight, snapshot), baselineHoldGridStrategy(tight, snapshot),
   ]));
   assert.equal(tightResult.winner.proposal.proposedAction.kind, "hold");
+});
+
+
+// ---------- gridProximityScore + the evaluator's ability to tell repositioning from doing nothing ----------
+
+test("gridProximityScore: a slot the price is inside scores 100", () => {
+  assert.equal(gridProximityScore(-100, 100, 0), 100);
+  assert.equal(gridProximityScore(-100, 100, -100), 100); // lower edge is inclusive
+});
+
+test("gridProximityScore: falls off with distance and bottoms out a full width away", () => {
+  // Width 200. Half a width past the upper edge -> 50; a full width past -> 0.
+  assert.equal(gridProximityScore(-100, 100, 100), 100 * (1 - 1 / 200)); // just outside, still near
+  assert.ok(Math.abs(gridProximityScore(-100, 100, 199) - 50) < 1);
+  assert.equal(gridProximityScore(-100, 100, 400), 0);
+  assert.equal(gridProximityScore(-100, 100, -400), 0);
+});
+
+test("gridProximityScore: unlike positioningScore, a one-sided slot is not simply zero", () => {
+  // The whole defect. Every grid slot sits outside the price by construction, and centeredness
+  // scores all of them 0 -- so a repositioning proposal and a do-nothing proposal came out with
+  // identical metrics, gas decided, and doing nothing always won.
+  const nearby = gridProximityScore(-58450, -58050, -58006);
+  const drifted = gridProximityScore(-58650, -58250, -58006);
+  assert.ok(nearby > 0, "a slot just below the price must not score zero");
+  assert.ok(nearby > drifted, `recentering must improve the score (${drifted} -> ${nearby})`);
+});
+
+test("evaluateGrid: repositioning a drifted slot beats holding, and holding wins when it should not", async () => {
+  function snapshotAtTick(currentTick: number): GridMarketSnapshot {
+    // Slot 0 parked below the price, slot 1 above it -- the shape of the real live grid.
+    return {
+      poolAddress: POOL,
+      slots: [
+        { currentTick, currentRange: { tickLower: -800, tickUpper: -400 }, currentLiquidity: 1_000_000_000n, tickSpacing: TICK_SPACING, recentVolatilityBps: 0 },
+        { currentTick, currentRange: { tickLower: -400, tickUpper: 0 }, currentLiquidity: 1_000_000_000n, tickSpacing: TICK_SPACING, recentVolatilityBps: 0 },
+      ],
+    };
+  }
+
+  async function judge(currentTick: number) {
+    const snapshot = snapshotAtTick(currentTick);
+    const j = gridJob();
+    const proposals = [await gridKeeperStrategy(j, snapshot), await baselineHoldGridStrategy(j, snapshot)];
+    const result = evaluateGrid(j, snapshot, proposals);
+    const keeper = result.scored.find((s) => s.proposal.candidateId === "gridkeeper-v1")!;
+    const hold = result.scored.find((s) => s.proposal.candidateId !== "gridkeeper-v1")!;
+    return { keeper, hold, delta: keeper.score.totalScore - hold.score.totalScore };
+  }
+
+  // Price well away from where the ladder would now sit: repositioning is worth paying for.
+  const drifted = await judge(900);
+  assert.equal(drifted.keeper.proposal.proposedAction.kind, "grid-rebalance");
+  assert.ok(
+    drifted.delta > 0,
+    `repositioning a drifted grid must beat holding, got a margin of ${drifted.delta}`,
+  );
+
+  // Note the margin is deliberately NOT asserted to grow without bound with drift: repositioning
+  // more slots costs proportionally more gas, so a worse-placed grid can be worth less to fix than
+  // a mildly-placed one. Monotonicity would be a nice story and is not what the arithmetic does.
+
+  // Price sitting where the ladder already put the slots: the keeper should decline, not invent work.
+  const settled = await judge(-200);
+  const keeperAction = settled.keeper.proposal.proposedAction;
+  if (keeperAction.kind === "grid-rebalance") {
+    // If it does propose something here it must at least be for a slot genuinely out of range.
+    for (const adj of keeperAction.slotAdjustments) {
+      const slot = snapshotAtTick(-200).slots[adj.slotIndex]!;
+      const outOfRange = slot.currentTick < slot.currentRange.tickLower || slot.currentTick >= slot.currentRange.tickUpper;
+      assert.ok(outOfRange, `slot ${adj.slotIndex} was in range and should not have been touched`);
+    }
+  }
 });

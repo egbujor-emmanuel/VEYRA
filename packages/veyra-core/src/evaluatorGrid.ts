@@ -1,10 +1,11 @@
-// Grid Trading evaluator. Reuses v2's per-range formulas (widthDrivenMetric, positioningScore)
-// unmodified, applied once per grid slot, then averaged -- the same discipline as v1/v2: a
-// candidate never scores itself, every metric comes from the same formula for every candidate.
+// Grid Trading evaluator. Reuses v2's widthDrivenMetric unmodified, applied once per grid slot and
+// averaged -- the same discipline as v1/v2: a candidate never scores itself, every metric comes
+// from the same formula for every candidate.
+//
+// It does NOT reuse v2's positioningScore. That measures centeredness and returns 0 whenever the
+// price is outside the range, which is every grid slot by construction. See gridProximityScore.
 
 import { widthDrivenMetric, PLACEHOLDER_REBALANCE_GAS_WEI } from "./evaluator.js";
-import { positioningScore } from "./evaluatorV2.js";
-void positioningScore; // deliberately unused here -- see gridPlacementScore
 import { scoreProposals } from "./evaluatorKernel.js";
 import type { GridTradingJobSpec, ProposalMetrics, StrategyProposal } from "./types.js";
 import type { GridMarketSnapshot } from "./gridSnapshot.js";
@@ -37,6 +38,38 @@ export function gridPlacementScore(
   return Math.max(0, Math.min(100, 100 * (1 - gap / width)));
 }
 
+/**
+ * How well-placed a grid slot is, measured as proximity of its nearest edge to the current price.
+ *
+ * This replaces positioningScore, which was the wrong question asked of the wrong thing.
+ * positioningScore measures CENTEREDNESS -- how near the price sits to the middle of a range -- and
+ * returns 0 outright whenever the price is outside it. That is correct for a single LP range, which
+ * exists to contain the price. It is meaningless for a grid slot, which is a resting one-sided
+ * order and is therefore ALWAYS outside the price by construction.
+ *
+ * The consequence was not subtle: every slot scored 0 on positioning, before and after a
+ * reposition, so a recentering proposal and a do-nothing proposal produced byte-identical metrics.
+ * Gas was then the only axis that differed, and doing nothing is always cheaper. gridKeeper could
+ * not win a round it deserved to win, and the category quietly held forever -- while the
+ * marketplace said it ran on a schedule.
+ *
+ * Proximity is a market fact, not a strategy's preference: a resting order nearer the price is
+ * likelier to be reached and filled. So it scores every candidate by the same rule and lets none
+ * of them score themselves. A slot the price is inside scores 100; one a full slot-width away
+ * scores 0.
+ */
+export function gridProximityScore(tickLower: number, tickUpper: number, currentTick: number): number {
+  const width = tickUpper - tickLower;
+  if (width <= 0) return 0;
+  const gap =
+    currentTick < tickLower
+      ? tickLower - currentTick
+      : currentTick >= tickUpper
+        ? currentTick - tickUpper + 1 // half-open range: tickUpper itself is already outside
+        : 0;
+  return Math.max(0, Math.min(100, 100 * (1 - gap / width)));
+}
+
 export function computeMetricsGrid(
   job: GridTradingJobSpec,
   snapshot: GridMarketSnapshot,
@@ -60,6 +93,9 @@ export function computeMetricsGrid(
   const avgPosScore = avg(perSlot.map((s) => s.posScore));
 
   const estimatedFeeEfficiency = 0.5 * avgWidthEff + 0.5 * avgPosScore;
+  // Risk here is capital sitting idle: a slot parked far from the price will not be reached, so it
+  // earns nothing while still being committed. Same shape as the other categories, read for what a
+  // grid actually risks.
   const riskScore = 0.5 * avgWidthEff + 0.5 * (100 - avgPosScore);
   const estimatedGasWei = BigInt(numAdjustments) * PLACEHOLDER_REBALANCE_GAS_WEI;
   // Same documented MVP gap as v1/v2 -- slots recenter on the current tick, no ratio-fixing swap leg modeled.
