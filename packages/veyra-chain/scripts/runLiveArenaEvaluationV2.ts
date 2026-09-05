@@ -23,6 +23,7 @@ import {
 } from "@veyra/core";
 import { ensureTestnetRpcOverride } from "../src/network.js";
 import { readRealizedVolatility } from "../src/volatilityReader.js";
+import { VEYRA_LIVE_POSITION_TOKEN_ID } from "../src/testnetAddresses.js";
 import { readPositionObservation, toMarketSnapshot } from "../src/positionReader.js";
 import { simulateLive } from "../src/simulate.js";
 
@@ -31,7 +32,9 @@ const DOCS_DIR = resolve(__dirname, "../../../../docs");
 const V2_ROUNDS_DIR = resolve(DOCS_DIR, "arena-rounds-v2");
 
 const VEYRA_WALLET = "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11" as const;
-const VEYRA_POSITION_TOKEN_ID = 37059n; // the real, current live position (result of Slice 3's execution)
+// Imported, never hardcoded: a successful rebalance mints a new token id, and this script spent
+// two rounds evaluating #37059 after run #4 had already drained it to zero.
+const VEYRA_POSITION_TOKEN_ID = VEYRA_LIVE_POSITION_TOKEN_ID;
 
 function nextV2RoundId(): number {
   mkdirSync(V2_ROUNDS_DIR, { recursive: true });

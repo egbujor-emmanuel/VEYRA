@@ -81,15 +81,24 @@ export function ArenaHistory() {
         nobody supplies.{" "}
         {firstHonestRound && (
           <span className="text-foreground">
-            In round {firstHonestRound.roundId} the two proposed genuinely different ranges for the first
-            time, and ours lost by{" "}
-            {Math.abs((firstHonestRound.winnerScore ?? 0) - (firstHonestRound.runnerUpScore ?? 0)).toFixed(2)}{" "}
-            points.
+            In round {firstHonestRound.roundId} it declined to reposition a position already 93.4% centered,
+            and lost {firstHonestRound.runnerUpScore ?? 0} to {firstHonestRound.winnerScore ?? 0} to the
+            baseline that recentered anyway.
           </span>
         )}{" "}
-        It took a wider, lower-risk range and paid for it in fee efficiency; under a job with low risk
-        tolerance the same proposal wins instead. Losing narrowly on a real difference is worth more here
-        than tying on no difference at all.
+        Which is worth seeing, because of how it lost.
+      </p>
+      <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
+        Recentering moved fee efficiency from 96.7 to 99.2 and risk from 53.3 to 50.8 — under three points on
+        each. But scores are normalised across only three candidates, so the best value on an axis becomes
+        100 and the worst becomes 0 regardless of the gap between them.{" "}
+        <span className="text-foreground">
+          A 2.5-point real difference is scored as a 100-point one.
+        </span>{" "}
+        The evaluator cannot currently tell "meaningfully better" from "trivially better", which biases it
+        toward always rebalancing — a full decrease/collect/swap/mint cycle to buy five points of
+        centeredness. That is a flaw in the scoring, it is not fixed yet, and it is stated here rather than
+        left for someone to find in the numbers.
       </p>
 
       <div className="mt-8 overflow-hidden rounded-[14px] border border-white/[0.08]">

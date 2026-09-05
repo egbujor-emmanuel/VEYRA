@@ -24,3 +24,21 @@ export const TICK_SPACING_BY_FEE: Record<number, number> = {
   2500: 50,
   10000: 200,
 };
+
+/**
+ * VEYRA's live PancakeSwap V3 position, and the single source of truth for it.
+ *
+ * It moves. A successful rebalance burns the old position and mints a new token id, so any file
+ * that hardcodes one goes stale the moment the agent does its job. That is not hypothetical: run
+ * #4 executed on 2026-08-25 and minted #37079, draining #37059 to zero liquidity. The web app
+ * followed; the arena evaluation script did not, and kept a comment calling #37059 "the real,
+ * current live position" while it held nothing. Two rounds were generated against a dead position
+ * before anyone noticed the simulation complaining that both mint amounts were zero.
+ *
+ * Anything that needs the current position imports this. The older per-script constants are left
+ * where they are only because those scripts are historical records of runs already made.
+ */
+export const VEYRA_LIVE_POSITION_TOKEN_ID = 37079n;
+
+/** Superseded positions, kept so the lineage is readable rather than mysterious. */
+export const VEYRA_RETIRED_POSITION_TOKEN_IDS = [37058n, 37059n] as const;
