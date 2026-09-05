@@ -49,6 +49,11 @@ import { evaluateV2, rangeKeeperStrategy, baselineHoldStrategy } from "@veyra/co
 import { readPositionObservation, toMarketSnapshot } from "@veyra/chain/positionReader";
 import { createSigner } from "@veyra/chain/txSigner";
 import { PANCAKE_V3_TESTNET, VEYRA_LIVE_POSITION_TOKEN_ID } from "@veyra/chain/testnetAddresses";
+import { resolveLivePositionTokenId } from "@veyra/chain/positionDiscovery";
+
+/** The pool holding the rebalance position and both grid slots. Yield lives in a different one. */
+const GRID_TRADING_POOL = "0x61c17A2C050facFdf8651b576Bc898596f5223b9";
+const GRID_POSITION_TOKEN_IDS = [37091n, 37093n];
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "../..");
@@ -62,8 +67,9 @@ const VEYRA_WALLET = "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11";
 const COMMERCE = "0xa206c0517b6371c6638cd9e4a42cc9f02a33b0de";
 const NFPM_ADDRESS = "0x427bF5b37357632377eCbEC9de3626C71A5396c1";
 const SWAP_ROUTER_ADDRESS = "0x1b81D678ffb9C0263b24A97847620C99d213eB14";
-// Imported, not retyped -- see testnetAddresses.ts for why a hardcoded position id goes stale.
-const POSITION_TOKEN_ID = VEYRA_LIVE_POSITION_TOKEN_ID;
+// Starting value only. Resolved against chain at startup -- see resolvePosition() below, and
+// testnetAddresses.ts for why a hardcoded position id goes stale the moment the agent works.
+let POSITION_TOKEN_ID = VEYRA_LIVE_POSITION_TOKEN_ID;
 const STATE_PATH = resolve(HERE, ".state.json");
 const AGENT_SESSION_PATH = resolve(REPO, "smoketest/.studio/agent-session.json");
 const DELIVERY_DIR = resolve(REPO, "docs/deliveries");
@@ -442,6 +448,19 @@ log(`  commerce : ${COMMERCE}`);
 log(`  poll     : every ${POLL_MS / 1000}s`);
 
 materializeCredentials();
+
+// Ask the chain which position we are actually managing, rather than trusting the constant. The
+// grid slots are excluded by id and the yield positions by pool, leaving exactly one candidate.
+try {
+  const resolved = await resolveLivePositionTokenId(client, VEYRA_WALLET, {
+    excludeTokenIds: GRID_POSITION_TOKEN_IDS,
+    poolAddress: GRID_TRADING_POOL,
+  });
+  POSITION_TOKEN_ID = resolved.tokenId;
+  log(`  position : #${resolved.tokenId} (${resolved.source} -- ${resolved.detail})`);
+} catch (err) {
+  log(`  position : #${POSITION_TOKEN_ID} (discovery failed, using configured id -- ${(err.message ?? err).toString().slice(0, 100)})`);
+}
 
 const { EVMWalletProvider } = await import("@bnbagent/sdk");
 // Held in a variable rather than constructed inline: runGridOrchestratorLoop signs with the

@@ -69,11 +69,15 @@
     "./volatilityReader": {
       "types": "./dist/src/volatilityReader.d.ts",
       "default": "./dist/src/volatilityReader.js"
+    },
+    "./positionDiscovery": {
+      "types": "./dist/src/positionDiscovery.d.ts",
+      "default": "./dist/src/positionDiscovery.js"
     }
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "tsc -p tsconfig.json && node --test dist/test/positionReader.test.js dist/test/altanaExecutor.test.js dist/test/sessionPause.test.js dist/test/relayHealthCheck.test.js dist/test/volatilityReader.test.js",
+    "test": "tsc -p tsconfig.json && node --test dist/test/positionReader.test.js dist/test/altanaExecutor.test.js dist/test/sessionPause.test.js dist/test/relayHealthCheck.test.js dist/test/volatilityReader.test.js dist/test/positionDiscovery.test.js",
     "test:live": "tsc -p tsconfig.json && node --test dist/test/positionReader.live.test.js dist/test/simulate.live.test.js"
   },
   "dependencies": {
