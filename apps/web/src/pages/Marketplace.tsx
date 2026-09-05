@@ -14,6 +14,7 @@ import { useConnectedWallet } from "../hooks/walletContext";
 import { useWalletFunding } from "../hooks/useNativeBalance";
 import { Card } from "../components/ui/card";
 import { Badge, Dot } from "../components/ui/badge";
+import { Reveal } from "../components/Motion";
 import type { JobCategory } from "../data/agentCatalog";
 
 /** One icon per category, so four structurally identical cards are scannable at a glance. */
@@ -76,12 +77,12 @@ export function Marketplace() {
           <ProofBar />
 
           <div className="mt-12 grid gap-px overflow-hidden rounded-[14px] border border-white/[0.08] bg-white/[0.06] sm:grid-cols-3">
-            {GUARANTEES.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="bg-background/60 p-8 backdrop-blur-sm">
+            {GUARANTEES.map(({ icon: Icon, title, body }, i) => (
+              <Reveal key={title} delay={i * 70} className="bg-background/60 p-8 backdrop-blur-sm">
                 <Icon className="mb-3 text-accent" />
                 <h3 className="text-[15px] font-medium tracking-[-0.01em] text-foreground">{title}</h3>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{body}</p>
-              </div>
+              </Reveal>
             ))}
           </div>
         </section>
@@ -105,8 +106,9 @@ export function Marketplace() {
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            {AGENT_CATALOG.map((agent) => (
-              <Link key={agent.id} to={`/agents/${agent.id}`} className="group no-underline">
+            {AGENT_CATALOG.map((agent, i) => (
+              <Reveal key={agent.id} delay={i * 70}>
+              <Link to={`/agents/${agent.id}`} className="group block h-full no-underline">
                 <Card className="h-full p-6 transition-all duration-200 group-hover:border-accent/40 group-hover:bg-white/[0.06]">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -142,6 +144,7 @@ export function Marketplace() {
                   <AgentTrackRecord category={agent.id} />
                 </Card>
               </Link>
+              </Reveal>
             ))}
           </div>
         </section>
