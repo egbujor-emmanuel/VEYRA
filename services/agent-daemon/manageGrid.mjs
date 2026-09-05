@@ -42,7 +42,10 @@ export async function manageGrid({ client, wallet, account, docsDir, log }) {
   const blocked = result.slotOutcomes.filter((o) => o.finalState !== "EXECUTED");
 
   if (result.slotOutcomes.length === 0) {
-    log?.(`  grid: all slots in range around the current tick -> hold`);
+    // Not "all slots in range" -- a correctly placed grid slot is a resting one-sided order and
+    // is therefore out of range by design. What zero adjustments means is that none of them needed
+    // repositioning.
+    log?.(`  grid: no slot needed repositioning -> hold`);
     return { decision: "hold", executed: 0 };
   }
 

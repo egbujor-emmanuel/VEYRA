@@ -63,8 +63,16 @@ test("all three candidates produce proposals with correct labels", async () => {
   assert.equal(proposals[2].agentIdOnChain, null);
 
   assert.equal(proposals[1].proposedAction.kind, "hold");
-  assert.equal(proposals[0].proposedAction.kind, "rebalance");
-  assert.equal(proposals[2].proposedAction.kind, "rebalance");
+  assert.equal(proposals[2].proposedAction.kind, "rebalance"); // symmetric baseline always recenters
+
+  // The mock price sits dead center of [400, 1600), so rangeKeeper declines to pay for a
+  // reposition that would buy nothing. This is the behaviour that stops it being a rename of
+  // baseline-symmetric-range -- see HOLD_WHEN_CENTEREDNESS_AT_LEAST in rangeKeeper.ts.
+  assert.equal(proposals[0].proposedAction.kind, "hold");
+
+  // Pushed to the edge of its range, it recenters like before.
+  const drifted = await runAllStrategies(job, mockSnapshot({ currentTick: 1550 }));
+  assert.equal(drifted[0].proposedAction.kind, "rebalance");
 });
 
 test("evaluator picks exactly one winner and every score is well-formed", async () => {

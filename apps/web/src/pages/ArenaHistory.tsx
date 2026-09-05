@@ -7,11 +7,20 @@ import type { ArenaRoundSummary } from "../data/types";
 /**
  * Every evaluation round, with the outcome visible without opening it.
  *
- * This page used to render seven identical "Round #N -- view" rows, then briefly claimed "our agent
- * won 6 of 7". Both were wrong in different ways. The round files show that in rounds 2-7 our
- * strategy tied baseline-symmetric-range on every scored axis AND on gas, so it won only by being
- * listed first -- and in round 1 a baseline beat it outright. Saying "won 6 of 7" would be reading
- * a tiebreak as a victory. The rows say which is which.
+ * Two wrong claims have stood on this page, and the second is worth recording because the fix went
+ * deeper than the wording.
+ *
+ * First it said "our agent won 6 of 7" -- reading a tiebreak as a victory. Then it said the
+ * scoring axes could not separate a tick-aware range from a naive symmetric one. That was a
+ * misdiagnosis. The axes were fine; the two STRATEGIES were the same function. rangeKeeper and
+ * baseline-symmetric-range both computed a half-width of `tickSpacing * 20` centered on the
+ * current tick, and the single thing meant to distinguish them -- a volatility multiplier -- is
+ * exactly 1 whenever volatility is unobserved. These pools carry observationCardinality 1, so it
+ * is always unobserved. Identical inputs, identical formula, identical output, every round.
+ *
+ * That is fixed at the source (see rangeKeeper.ts), so rounds 1-7 and round 8 were produced by
+ * genuinely different strategies. The rounds are kept exactly as they were recorded rather than
+ * re-run, so this page has to say which era a round belongs to instead of pretending to one.
  */
 
 const ROUNDS: ArenaRoundSummary[] = archiveManifest.arenaRounds ?? [];
@@ -43,7 +52,9 @@ export function ArenaHistory() {
           }));
 
   const ties = rounds.filter((r) => r.decidedByOrdering).length;
-  const outrightWins = rounds.filter((r) => r.wonByOurAgent && !r.decidedByOrdering).length;
+  /** Rounds recorded before rangeKeeper stopped being a rename of the symmetric baseline. */
+  const LAST_DEGENERATE_ROUND = 7;
+  const recent = rounds.filter((r) => r.roundId > LAST_DEGENERATE_ROUND);
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-6 pb-16 pt-12">
@@ -54,17 +65,28 @@ export function ArenaHistory() {
       </p>
       <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
         <span className="text-foreground">
-          Our strategy has not yet outscored a baseline in {rounds.length} rounds.
+          For the first {LAST_DEGENERATE_ROUND} rounds our strategy was not really a strategy.
         </span>{" "}
-        {ties > 0 && (
-          <>
-            In {ties} of them it tied <span className="font-mono text-[14px]">baseline-symmetric-range</span> on
-            every axis and on gas, so it won only by being evaluated first.{" "}
-          </>
-        )}
-        {outrightWins === 0 && "In the remaining round a baseline scored higher and was selected instead. "}
-        That is a finding about the scoring axes — they cannot currently separate a tick-aware range from a
-        naive symmetric one — and it is left on the page rather than smoothed over.
+        It computed the same range as{" "}
+        <span className="font-mono text-[14px]">baseline-symmetric-range</span> — the same half-width, the
+        same centering — and the one input meant to separate them, recent volatility, is never observable on
+        a pool whose oracle holds a single observation. So {ties} of those rounds tied on every axis and on
+        gas, and were decided by evaluation order alone.
+      </p>
+      <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
+        That is fixed now. rangeKeeper declines to reposition a position still sitting in the middle half of
+        its range, and widens on the overshoot it can actually measure rather than on a volatility number
+        nobody supplies.{" "}
+        {recent.length > 0 && (
+          <span className="text-foreground">
+            In round {recent[0]!.roundId} the two proposed genuinely different ranges for the first time, and
+            ours lost by {Math.abs((recent[0]!.winnerScore ?? 0) - (recent[0]!.runnerUpScore ?? 0)).toFixed(2)}{" "}
+            points.
+          </span>
+        )}{" "}
+        It took a wider, lower-risk range and paid for it in fee efficiency; under a job with low risk
+        tolerance the same proposal wins instead. Losing narrowly on a real difference is worth more here
+        than tying on no difference at all.
       </p>
 
       <div className="mt-8 overflow-hidden rounded-[14px] border border-white/[0.08]">
@@ -91,7 +113,7 @@ export function ArenaHistory() {
                 </span>
                 <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
                   {r.runnerUpCandidateId && r.runnerUpScore !== null
-                    ? `${r.decidedByOrdering ? "level with" : "ahead of"} ${r.runnerUpCandidateId} (${r.runnerUpScore})`
+                    ? `${r.decidedByOrdering ? "level with" : "ahead of"} ${r.runnerUpCandidateId} (${r.runnerUpScore.toFixed(r.decidedByOrdering ? 0 : 2)})`
                     : r.candidateCount > 0
                       ? `${r.candidateCount} candidates`
                       : ""}
@@ -102,7 +124,7 @@ export function ArenaHistory() {
 
               {r.winnerScore !== null && (
                 <span className="shrink-0 font-mono text-[13px] tabular text-foreground">
-                  {r.winnerScore.toFixed(0)}
+                  {r.winnerScore.toFixed(Number.isInteger(r.winnerScore) ? 0 : 2)}
                   <span className="text-muted-foreground">/100</span>
                 </span>
               )}

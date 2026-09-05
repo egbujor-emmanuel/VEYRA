@@ -46,7 +46,9 @@ function snapshotAt(currentTick: number): MarketSnapshot {
 
 test("a win that is really a tie is recorded as one", async () => {
   const j = job();
-  const snapshot = snapshotAt(-58150);
+  // Dead center of the range: rangeKeeper declines to reposition a healthy position, and so does
+  // baseline-hold. Two candidates proposing the identical correct action must register as a tie.
+  const snapshot = snapshotAt(-57050);
   const proposals = await Promise.all([
     rangeKeeperStrategy(j, snapshot),
     baselineHoldStrategy(j, snapshot),
@@ -56,20 +58,20 @@ test("a win that is really a tie is recorded as one", async () => {
 
   assert.equal(result.winner.proposal.candidateId, "rangekeeper-v1");
   assert.ok(
-    result.winner.wonByTiebreak?.includes("baseline-symmetric-range"),
-    "rangekeeper only edged the symmetric-range baseline on list order -- that must be recorded",
+    result.winner.wonByTiebreak?.includes("baseline-hold"),
+    "rangekeeper only edged the hold baseline on list order -- that must be recorded",
   );
 
   // And the tie is genuine on both axes, not just score.
-  const tied = result.scored.find((s) => s.proposal.candidateId === "baseline-symmetric-range")!;
+  const tied = result.scored.find((s) => s.proposal.candidateId === "baseline-hold")!;
   assert.equal(tied.score.totalScore, result.winner.score.totalScore);
   assert.equal(tied.metrics.estimatedGasWei, result.winner.metrics.estimatedGasWei);
 });
 
 test("a genuine win carries no tie marker", async () => {
   const j = job();
-  // Deep in range, hold wins outright rather than tying.
-  const snapshot = snapshotAt(-57050);
+  // Far out of range: every candidate proposes something different, so nothing ties.
+  const snapshot = snapshotAt(-50000);
   const proposals = await Promise.all([
     rangeKeeperStrategy(j, snapshot),
     baselineHoldStrategy(j, snapshot),
