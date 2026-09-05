@@ -275,13 +275,24 @@ Stated here rather than left to be discovered:
 
 - **Testnet only.** No mainnet deployment, no real funds.
 
-- **Volatility is not being measured yet.** rangeKeeper's width responds to realized volatility, and
-  the pool's oracle buffer has been grown from 1 to 60 slots so it can be read
-  ([tx](https://testnet.bscscan.com/tx/0xc001bac758f2cbffb13c795d130e1b517e7606dcac5d91ecd523c54395f6d0b7)).
-  But a pool writes one observation per block containing a swap, and this one sees little flow, so
-  `readRealizedVolatility` still returns `INSUFFICIENT_HISTORY`. It reports that rather than
-  substituting 0 — "calm market" and "could not measure" are different claims. No swaps were
-  manufactured to fill the buffer faster.
+- **Volatility is measurable, but what it currently measures is us.** The pool's oracle buffer was
+  grown from 1 to 60 slots
+  ([tx](https://testnet.bscscan.com/tx/0xc001bac758f2cbffb13c795d130e1b517e7606dcac5d91ecd523c54395f6d0b7)),
+  and `readRealizedVolatility` now returns `OBSERVED` — about 5.5 bps over the trailing hour.
+
+  That number is not market activity. A pool writes an observation only in blocks containing a
+  swap, and this one has almost no organic flow, so the only entries in the buffer come from the
+  controlled swap used to exercise the grid path
+  ([tx](https://testnet.bscscan.com/tx/0xde59d9273418a6cf20d528d296e5a658894799f76d5c71ce6c5b9489d36b077f)).
+  The oracle genuinely recorded those ticks, so `OBSERVED` is the correct provenance for the
+  reading — but the *cause* was an operator action, and it decays out of the one-hour window on its
+  own. Treat any non-zero volatility on this pool as induced until this project's own swaps stop
+  being the only trades in it.
+
+  The reader still returns `null` rather than `0` when it cannot measure, because "calm market" and
+  "could not measure" are different claims. No swap was ever made in order to produce a volatility
+  number; the one that exists was made to test an execution path, and this entry exists so nobody
+  reads its side effect as market data.
 
 - **Yield Optimisation is operator-invoked, not scheduled.** The other three run under the daemon.
   Yield stays manual deliberately: a migration moves the whole position, and this run's own record
