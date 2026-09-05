@@ -3,7 +3,7 @@
 // from the same formula for every candidate.
 //
 // It does NOT reuse v2's positioningScore. That measures centeredness and returns 0 whenever the
-// price is outside the range, which is every grid slot by construction. See gridProximityScore.
+// price is outside the range, which is every grid slot by construction. See gridPlacementScore.
 
 import { widthDrivenMetric, PLACEHOLDER_REBALANCE_GAS_WEI } from "./evaluator.js";
 import { scoreProposals } from "./evaluatorKernel.js";
@@ -35,38 +35,6 @@ export function gridPlacementScore(
   if (currentTick >= range.tickLower && currentTick < range.tickUpper) return 100;
   const gap = currentTick < range.tickLower ? range.tickLower - currentTick : currentTick - range.tickUpper + 1;
   // A slot one full width away from the price is worth nothing as a resting order.
-  return Math.max(0, Math.min(100, 100 * (1 - gap / width)));
-}
-
-/**
- * How well-placed a grid slot is, measured as proximity of its nearest edge to the current price.
- *
- * This replaces positioningScore, which was the wrong question asked of the wrong thing.
- * positioningScore measures CENTEREDNESS -- how near the price sits to the middle of a range -- and
- * returns 0 outright whenever the price is outside it. That is correct for a single LP range, which
- * exists to contain the price. It is meaningless for a grid slot, which is a resting one-sided
- * order and is therefore ALWAYS outside the price by construction.
- *
- * The consequence was not subtle: every slot scored 0 on positioning, before and after a
- * reposition, so a recentering proposal and a do-nothing proposal produced byte-identical metrics.
- * Gas was then the only axis that differed, and doing nothing is always cheaper. gridKeeper could
- * not win a round it deserved to win, and the category quietly held forever -- while the
- * marketplace said it ran on a schedule.
- *
- * Proximity is a market fact, not a strategy's preference: a resting order nearer the price is
- * likelier to be reached and filled. So it scores every candidate by the same rule and lets none
- * of them score themselves. A slot the price is inside scores 100; one a full slot-width away
- * scores 0.
- */
-export function gridProximityScore(tickLower: number, tickUpper: number, currentTick: number): number {
-  const width = tickUpper - tickLower;
-  if (width <= 0) return 0;
-  const gap =
-    currentTick < tickLower
-      ? tickLower - currentTick
-      : currentTick >= tickUpper
-        ? currentTick - tickUpper + 1 // half-open range: tickUpper itself is already outside
-        : 0;
   return Math.max(0, Math.min(100, 100 * (1 - gap / width)));
 }
 
