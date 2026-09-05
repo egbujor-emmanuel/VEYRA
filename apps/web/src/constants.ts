@@ -1,9 +1,13 @@
-// The one thing genuinely hardcoded in this app: WHICH position is "the current one" to watch
-// live. Everything about its STATE (owner, tick, range, liquidity, in-range) is a live read --
-// only the tokenId itself is a constant, updated by hand whenever a real rebalance mints a new
-// position. Currently #37079, minted by the real, independently-verified execution documented
-// in docs/agent-arena-runs-v2/run-0004-resumed-mint.json.
-export const VEYRA_POSITION_TOKEN_ID = 37079n;
+// WHICH position is "the current one" to watch live. Everything about its STATE (owner, tick,
+// range, liquidity, in-range) is a live read -- only the tokenId itself is a constant, updated
+// whenever a real rebalance mints a new one. #37079 came from the independently-verified
+// execution in docs/agent-arena-runs-v2/run-0004-resumed-mint.json.
+//
+// Re-exported from @veyra/chain rather than written out again. It used to be typed here by hand,
+// and the arena evaluation script kept its own copy -- which went stale the moment run #4 minted
+// #37079, leaving that script evaluating a position with zero liquidity. One definition, three
+// consumers.
+export { VEYRA_LIVE_POSITION_TOKEN_ID as VEYRA_POSITION_TOKEN_ID } from "@veyra/chain/testnetAddresses";
 
 export const VEYRA_WALLET = "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11" as const;
 

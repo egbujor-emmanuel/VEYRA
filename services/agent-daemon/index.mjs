@@ -48,7 +48,7 @@ const GRID_DAEMON_ENABLED = true;
 import { evaluateV2, rangeKeeperStrategy, baselineHoldStrategy } from "@veyra/core";
 import { readPositionObservation, toMarketSnapshot } from "@veyra/chain/positionReader";
 import { createSigner } from "@veyra/chain/txSigner";
-import { PANCAKE_V3_TESTNET } from "@veyra/chain/testnetAddresses";
+import { PANCAKE_V3_TESTNET, VEYRA_LIVE_POSITION_TOKEN_ID } from "@veyra/chain/testnetAddresses";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = resolve(HERE, "../..");
@@ -62,7 +62,8 @@ const VEYRA_WALLET = "0x9429BE71274b9E5fB56EE7C57C58298FFF720f11";
 const COMMERCE = "0xa206c0517b6371c6638cd9e4a42cc9f02a33b0de";
 const NFPM_ADDRESS = "0x427bF5b37357632377eCbEC9de3626C71A5396c1";
 const SWAP_ROUTER_ADDRESS = "0x1b81D678ffb9C0263b24A97847620C99d213eB14";
-const POSITION_TOKEN_ID = 37079n;
+// Imported, not retyped -- see testnetAddresses.ts for why a hardcoded position id goes stale.
+const POSITION_TOKEN_ID = VEYRA_LIVE_POSITION_TOKEN_ID;
 const STATE_PATH = resolve(HERE, ".state.json");
 const AGENT_SESSION_PATH = resolve(REPO, "smoketest/.studio/agent-session.json");
 const DELIVERY_DIR = resolve(REPO, "docs/deliveries");
