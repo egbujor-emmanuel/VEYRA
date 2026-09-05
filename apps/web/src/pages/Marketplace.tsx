@@ -1,5 +1,8 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Fingerprint, ShieldCheck, Timer } from "lucide-react";
+import {
+  ArrowRight, Fingerprint, ShieldCheck, Timer,
+  Scale, Grid3x3, TrendingUp, HeartPulse, Clock, Hand,
+} from "lucide-react";
 import { AGENT_CATALOG } from "../data/agentCatalog";
 import { MaturityBadge } from "../components/MaturityBadge";
 import { AgentTrackRecord } from "../components/AgentTrackRecord";
@@ -11,6 +14,15 @@ import { useConnectedWallet } from "../hooks/walletContext";
 import { useWalletFunding } from "../hooks/useNativeBalance";
 import { Card } from "../components/ui/card";
 import { Badge, Dot } from "../components/ui/badge";
+import type { JobCategory } from "../data/agentCatalog";
+
+/** One icon per category, so four structurally identical cards are scannable at a glance. */
+const CATEGORY_ICON: Record<JobCategory, typeof Scale> = {
+  "rebalance": Scale,
+  "grid-trading": Grid3x3,
+  "yield-optimisation": TrendingUp,
+  "health-factor-monitoring": HeartPulse,
+};
 
 /**
  * The three properties that make this a custody story rather than a "connect wallet" story.
@@ -97,14 +109,33 @@ export function Marketplace() {
               <Link key={agent.id} to={`/agents/${agent.id}`} className="group no-underline">
                 <Card className="h-full p-6 transition-all duration-200 group-hover:border-accent/40 group-hover:bg-white/[0.06]">
                   <div className="flex items-start justify-between gap-4">
-                    <h3 className="text-display text-[19px] text-foreground">{agent.displayName}</h3>
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      {(() => {
+                        const Icon = CATEGORY_ICON[agent.id];
+                        return <Icon className="size-[18px] shrink-0 text-accent" strokeWidth={1.75} />;
+                      })()}
+                      <h3 className="text-display text-[19px] text-foreground">{agent.displayName}</h3>
+                    </div>
                     <ArrowRight className="mt-1 shrink-0 text-muted-foreground transition-all group-hover:translate-x-0.5 group-hover:text-accent" />
                   </div>
                   <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
                     {agent.shortDescription}
                   </p>
-                  <div className="mt-5">
-                    <MaturityBadge maturity={agent.maturity} />
+                  {/* Two different questions, both worth answering before a visitor clicks: has it
+                      really executed on-chain, and does it act without being asked. Four identical
+                      green badges implied the second was true everywhere, which it is not. */}
+                  <div className="mt-5 flex flex-wrap items-center gap-2">
+                    <MaturityBadge maturity={agent.maturity} emphasis="quiet" />
+                    <span
+                      className={`status-pill ${agent.scheduling === "scheduled" ? "status-good" : "status-muted"}`}
+                      title={agent.schedulingNote}
+                    >
+                      {agent.scheduling === "scheduled" ? (
+                        <><Clock className="mr-1 inline size-3" strokeWidth={2} />ON A SCHEDULE</>
+                      ) : (
+                        <><Hand className="mr-1 inline size-3" strokeWidth={2} />OPERATOR-INVOKED</>
+                      )}
+                    </span>
                   </div>
                   {/* Real numbers from this agent's own archives -- the difference between a
                       catalogue entry and something a visitor can actually choose between. */}

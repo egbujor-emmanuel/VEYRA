@@ -85,7 +85,8 @@ export function ArenaHistory() {
             and that decision won.
           </span>
         )}{" "}
-        Which took fixing the scoring, not the strategy.
+        That took two fixes, not one: a strategy willing to decline, and a scoring that stops
+        punishing it for declining.
       </p>
       <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
         The first time that round ran, holding lost 50 to 75. Recentering moved fee efficiency from 96.7 to

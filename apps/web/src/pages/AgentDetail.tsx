@@ -52,62 +52,36 @@ function DecisionRule({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * What "activate" means, per category, stated accurately.
- *
- * This panel used to render the same sentence on all four pages: VEYRA acts on a schedule and
- * does not need the tab open. That is true of rebalancing and health-factor monitoring, which the
- * daemon runs on a schedule. It was not true of grid trading or yield optimisation, which only
- * ever ran when an operator invoked the orchestrator. Rather than qualify it vaguely, each page
- * now says which of the two it is, and why.
- */
-type Scheduling = "scheduled" | "on-demand";
-
-/**
  * What the schedule actually delivers, measured rather than assumed.
  *
- * The cron asks for every ten minutes, and quoting that as the real cadence was wrong by more than a
- * factor of twenty: GitHub throttles scheduled workflows hard on free runners. The figures below
- * come from the ten consecutive scheduled runs in this repo's own Actions history, which anyone
- * can check.
+ * The cron asks for every ten minutes, and quoting that as the real cadence was wrong by more than
+ * a factor of twenty: GitHub throttles scheduled workflows hard on free runners. These figures come
+ * from the repo's own Actions history, which anyone can recompute.
  */
 const CADENCE =
   "The workflow asks for every ten minutes; GitHub delivers scheduled runs far less often than that on free runners. Measured across ten consecutive scheduled runs on 3-4 Sep 2026: median 2h48m between passes, fastest 2h01m, slowest 4h50m.";
 
-const SCHEDULING: Record<JobCategory, { mode: Scheduling; note: string }> = {
-  rebalance: {
-    mode: "scheduled",
-    note:
-      "The daemon runs against every account that has granted VEYRA a live, scoped session, and does not need this tab open — activating here only turns on live reads so you can watch the state it works from. " +
-      CADENCE +
-      " Adequate against 24-hour job expiries, but it is a few times a day, not continuous, and saying otherwise would overstate it.",
-  },
-  "health-factor-monitoring": {
-    mode: "scheduled",
-    note:
-      "The daemon reads this position and repays without being asked once the ratio crosses the threshold. It does not need this tab open. " +
-      CADENCE +
-      " The position drifts on accrued interest by roughly a ten-thousandth of a percent per pass, so hours between checks is comfortably inside the margin.",
-  },
-  "grid-trading": {
-    mode: "on-demand",
-    note: "Grid runs when the orchestrator is invoked, not on a schedule. It was put under the daemon and taken back out: the first scheduled pass decreased and collected a slot as the strategy asked, then the ratio-fixing swap failed and the executor's own guard refused to mint a position at the wrong ratio. The slot was restored, and this stays operator-invoked until that path is fixed. The guard behaving correctly is why the damage stopped at one slot.",
-  },
-  "yield-optimisation": {
-    mode: "on-demand",
-    note: "Deliberately not scheduled. A migration moves the whole position, and this run's own record states the advantage it responded to was seeded rather than observed — BSC testnet has too little volume for a candidate to overtake organically. Automating a capital move on a signal the record itself calls unreliable would be the wrong thing to build.",
-  },
-};
-
+/**
+ * What "activate" means, per category, stated accurately.
+ *
+ * This panel used to render the same sentence on all four pages: VEYRA acts on a schedule and does
+ * not need the tab open. That was true of rebalancing and health-factor monitoring; it was not true
+ * of grid trading or yield optimisation. The per-category answer now lives in agentCatalog.ts, so
+ * the marketplace card and this panel cannot drift apart.
+ */
 function ActivateToggle({ category }: { category: JobCategory }) {
   const [active, setActive] = useState(false);
-  const { mode, note } = SCHEDULING[category];
+  const agent = AGENT_CATALOG.find((a) => a.id === category)!;
+  const scheduled = agent.scheduling === "scheduled";
   return (
     <div className="panel">
       <h2>Activate</h2>
-      <span className={`status-pill ${mode === "scheduled" ? "status-good" : "status-muted"}`}>
-        {mode === "scheduled" ? "RUNS ON A SCHEDULE" : "OPERATOR-INVOKED"}
+      <span className={`status-pill ${scheduled ? "status-good" : "status-muted"}`}>
+        {scheduled ? "RUNS ON A SCHEDULE" : "OPERATOR-INVOKED"}
       </span>
-      <p className="rationale" style={{ marginTop: 10 }}>{note}</p>
+      <p className="rationale" style={{ marginTop: 10 }}>
+        {agent.schedulingNote} {scheduled ? CADENCE : ""}
+      </p>
       <button className="btn btn-secondary" onClick={() => setActive((a) => !a)}>
         {active ? "Stop watching" : "Watch live state"}
       </button>
