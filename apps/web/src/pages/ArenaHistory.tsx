@@ -82,23 +82,25 @@ export function ArenaHistory() {
         {firstHonestRound && (
           <span className="text-foreground">
             In round {firstHonestRound.roundId} it declined to reposition a position already 93.4% centered,
-            and lost {firstHonestRound.runnerUpScore ?? 0} to {firstHonestRound.winnerScore ?? 0} to the
-            baseline that recentered anyway.
+            and that decision won.
           </span>
         )}{" "}
-        Which is worth seeing, because of how it lost.
+        Which took fixing the scoring, not the strategy.
       </p>
       <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
-        Recentering moved fee efficiency from 96.7 to 99.2 and risk from 53.3 to 50.8 — under three points on
-        each. But scores are normalised across only three candidates, so the best value on an axis becomes
-        100 and the worst becomes 0 regardless of the gap between them.{" "}
-        <span className="text-foreground">
-          A 2.5-point real difference is scored as a 100-point one.
-        </span>{" "}
-        The evaluator cannot currently tell "meaningfully better" from "trivially better", which biases it
-        toward always rebalancing — a full decrease/collect/swap/mint cycle to buy five points of
-        centeredness. That is a flaw in the scoring, it is not fixed yet, and it is stated here rather than
-        left for someone to find in the numbers.
+        The first time that round ran, holding lost 50 to 75. Recentering moved fee efficiency from 96.7 to
+        99.2 and risk from 53.3 to 50.8 — under three points on each — but scores were normalised across the
+        three candidates, so the best value on an axis became 100 and the worst 0 no matter how small the gap.{" "}
+        <span className="text-foreground">A 2.5-point real difference was scored as a 100-point one</span>,
+        and the evaluator was structurally biased toward always rebalancing.
+      </p>
+      <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
+        Fee efficiency and risk are already 0–100 quantities, so ranking them against each other only threw
+        the magnitudes away. They are now used as they stand, and gas is measured against a real anchor —
+        the share of the job's own spend limit it consumes — rather than against the other candidates. The
+        same round now scores holding 85.85 against the marginal rebalance's 79.60. v1's evaluator is left on
+        the old scoring deliberately: it is a preserved historical policy, and rewriting it would erase the
+        record of what the first evaluator did.
       </p>
 
       <div className="mt-8 overflow-hidden rounded-[14px] border border-white/[0.08]">

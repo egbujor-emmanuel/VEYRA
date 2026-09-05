@@ -76,11 +76,10 @@ test("v2: price unchanged (centered) -- holding wins, and rangeKeeper is now one
   // same thing the hold baseline does. Two candidates proposing the identical correct action tie,
   // and the tie is recorded rather than dressed up as a win.
   assert.equal(result.winner.proposal.proposedAction.kind, "hold");
-  assert.equal(result.winner.score.totalScore, 100);
 
   const rangeKeeper = result.scored.find((s) => s.proposal.candidateId === "rangekeeper-v1")!;
   assert.equal(rangeKeeper.proposal.proposedAction.kind, "hold");
-  assert.equal(rangeKeeper.score.totalScore, 100);
+  assert.equal(rangeKeeper.score.totalScore, result.winner.score.totalScore);
   assert.ok(
     result.winner.wonByTiebreak?.includes("baseline-hold") ||
       result.winner.proposal.candidateId === "baseline-hold",
@@ -137,11 +136,45 @@ test("v2: the job's risk tolerance now decides which range wins", async () => {
   const snapshot = snapshotAt(-50000);
 
   const neutral = evaluateV2(job(), snapshot, await runAllStrategies(job(), snapshot));
-  assert.equal(neutral.winner.proposal.candidateId, "baseline-symmetric-range");
+  const nRk = neutral.scored.find((s) => s.proposal.candidateId === "rangekeeper-v1")!;
+  const nSym = neutral.scored.find((s) => s.proposal.candidateId === "baseline-symmetric-range")!;
+  // Under equal weights rangeKeeper's wider range trades exactly as much fee efficiency as it buys
+  // in risk, so the two land level. That is a real property of the tradeoff, not a rounding
+  // accident, and the tie is recorded rather than presented as a win.
+  assert.equal(nRk.score.totalScore, nSym.score.totalScore);
 
   const cautious = job({ riskTolerance: "low" });
   const conservative = evaluateV2(cautious, snapshot, await runAllStrategies(cautious, snapshot));
+  const cRk = conservative.scored.find((s) => s.proposal.candidateId === "rangekeeper-v1")!;
+  const cSym = conservative.scored.find((s) => s.proposal.candidateId === "baseline-symmetric-range")!;
+  assert.ok(cRk.score.totalScore > cSym.score.totalScore, "a risk-averse job must prefer the wider range");
   assert.equal(conservative.winner.proposal.candidateId, "rangekeeper-v1");
+});
+
+test("v2: a trivial improvement no longer beats doing nothing", async () => {
+  // The defect this scoring change exists to fix. With min-max normalization across three
+  // candidates, recentering a position already 93.4% centered scored 75 against holding's 50 --
+  // the raw gap was under three points on each axis, but best-becomes-100/worst-becomes-0 turned
+  // it into a rout. The evaluator was structurally biased toward always rebalancing, which means
+  // paying a full decrease/collect/swap/mint cycle for five points of centeredness.
+  const j = job();
+  // 66 ticks off the center of a 2000-tick range: 93.4% centered, matching round 8's real
+  // geometry. Recentering genuinely improves positioning here -- just not by enough to be worth a
+  // decrease/collect/swap/mint cycle. Dead center would be too easy a case, since there the
+  // rebalance gains literally nothing.
+  const snapshot = snapshotAt(-57116);
+  const result = evaluateV2(j, snapshot, await runAllStrategies(j, snapshot));
+
+  const hold = result.scored.find((s) => s.proposal.candidateId === "baseline-hold")!;
+  const rebalance = result.scored.find((s) => s.proposal.candidateId === "baseline-symmetric-range")!;
+
+  assert.ok(
+    hold.score.totalScore > rebalance.score.totalScore,
+    `holding (${hold.score.totalScore}) must beat a marginal rebalance (${rebalance.score.totalScore})`,
+  );
+  // And the reason must be the gas, not a quirk: the rebalance still scores better on fee
+  // efficiency, it just no longer scores better by a manufactured 100 points.
+  assert.ok(rebalance.metrics.estimatedFeeEfficiency > hold.metrics.estimatedFeeEfficiency);
 });
 
 test("REGRESSION GUARD: v1's evaluate() is completely unchanged -- Hold still wins the SAME out-of-range scenario v2 just flipped", async () => {

@@ -283,12 +283,6 @@ Stated here rather than left to be discovered:
   substituting 0 — "calm market" and "could not measure" are different claims. No swaps were
   manufactured to fill the buffer faster.
 
-- **The evaluator cannot tell "meaningfully better" from "trivially better".** Scores are min-max
-  normalized across only three candidates, so the best value on an axis becomes 100 and the worst 0
-  no matter how small the gap. In round 8 a 2.5-point real difference in fee efficiency was scored
-  as a 100-point one, which biases the evaluator toward always rebalancing. Visible on the arena
-  page; not fixed.
-
 - **Grid Trading and Yield Optimisation are operator-invoked, not scheduled.** Rebalancing and
   Health Factor monitoring run under the daemon. Grid was scheduled and taken back out after its
   first pass stranded a slot; the underlying cause is fixed and it is scheduled again, but yield

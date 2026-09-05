@@ -89,6 +89,7 @@ export function evaluate(
   proposals: StrategyProposal[],
 ): EvaluationResult {
   const metrics = proposals.map((p) => computeMetrics(job, snapshot, p));
-  const { scored, winner } = scoreProposals(job, proposals, metrics);
+  // "relative" on purpose: v1 is a preserved historical policy with a regression guard on it.
+  const { scored, winner } = scoreProposals(job, proposals, metrics, "relative");
   return { jobId: job.jobId, snapshot, scored, winner };
 }
