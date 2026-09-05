@@ -7,6 +7,7 @@ import {
   evaluateGrid,
   planGridExecution,
   simulateGridPlan,
+  gridPlacementScore,
   type GridMarketSnapshot,
   type GridTradingJobSpec,
   type MarketSnapshot,
@@ -292,4 +293,65 @@ test("gridKeeperStrategy: a swap-free reposition on the same side is still propo
   assert.equal(proposal.proposedAction.slotAdjustments[0]!.slotIndex, 0);
   const { tickLower, tickUpper } = proposal.proposedAction.slotAdjustments[0]!.newRange;
   assert.ok(currentTick >= tickUpper, "target must stay on the token1 side, so no swap is needed");
+});
+
+// ---------- gridPlacementScore ----------
+
+test("gridPlacementScore: a one-sided slot is scored on distance, not centeredness", async () => {
+  // The defect this metric replaces. v2's positioningScore rewards a range for CONTAINING the
+  // price, so it returned 0 for every grid slot -- which are one-sided by design. Every candidate
+  // then scored identically on fee efficiency and risk, gas was the only difference, and holding
+  // won every round by construction. The grid agent could not act at all.
+  const currentTick = -58006;
+  const stranded = { tickLower: -58650, tickUpper: -58250 }; // 244 ticks below the price
+  const wellPlaced = { tickLower: -58450, tickUpper: -58050 }; // 44 ticks below the price
+
+  const strandedScore = gridPlacementScore(stranded, currentTick);
+  const wellPlacedScore = gridPlacementScore(wellPlaced, currentTick);
+
+  assert.ok(wellPlacedScore > strandedScore, `${wellPlacedScore} should beat ${strandedScore}`);
+  // Both are one-sided, so v2's metric would have given both exactly 0.
+  assert.ok(strandedScore > 0 && strandedScore < 100);
+});
+
+test("gridPlacementScore: a slot the price has entered is fully valued", async () => {
+  assert.equal(gridPlacementScore({ tickLower: -58250, tickUpper: -57850 }, -58006), 100);
+});
+
+test("gridPlacementScore: a slot a full width away from the price is worth nothing", async () => {
+  // 400 ticks wide, sitting 400+ ticks below the price -- too far out to be filled.
+  assert.equal(gridPlacementScore({ tickLower: -59000, tickUpper: -58600 }, -58006), 0);
+});
+
+test("evaluateGrid: recentering a stranded slot beats holding, even though it costs gas", async () => {
+  // The end-to-end property. Recentering must be able to WIN when it genuinely improves placement,
+  // otherwise the category is inert no matter what the strategy proposes.
+  const currentTick = -58006;
+  const snapshot: GridMarketSnapshot = {
+    poolAddress: POOL,
+    slots: [
+      { currentTick, currentRange: { tickLower: -58650, tickUpper: -58250 }, currentLiquidity: 1_000_000_000n, tickSpacing: TICK_SPACING, recentVolatilityBps: 0 },
+      { currentTick, currentRange: { tickLower: -58250, tickUpper: -57850 }, currentLiquidity: 1_000_000_000n, tickSpacing: TICK_SPACING, recentVolatilityBps: 0 },
+    ],
+  };
+  // The budget the grid orchestrator actually builds: one rebalance allowance per slot.
+  const j = gridJob({
+    constraints: { maxSpendWei: 10_000_000_000_000_000n * 2n, maxSlippageBps: 100, riskTolerance: "medium", deadlineSeconds: 600 },
+  });
+  const proposals = await Promise.all([gridKeeperStrategy(j, snapshot), baselineHoldGridStrategy(j, snapshot)]);
+  const result = evaluateGrid(j, snapshot, proposals);
+
+  assert.equal(result.winner.proposal.candidateId, "gridkeeper-v1");
+  assert.equal(result.winner.proposal.proposedAction.kind, "grid-rebalance");
+
+  // And the converse, which is the same mechanism working rather than a separate rule: squeeze the
+  // spend limit and the identical reposition stops being worth its gas. Gas is scored against the
+  // job's own budget, so a tighter budget makes the same action more expensive in score terms.
+  const tight = gridJob({
+    constraints: { maxSpendWei: 4_000_000_000_000_000n, maxSlippageBps: 100, riskTolerance: "medium", deadlineSeconds: 600 },
+  });
+  const tightResult = evaluateGrid(tight, snapshot, await Promise.all([
+    gridKeeperStrategy(tight, snapshot), baselineHoldGridStrategy(tight, snapshot),
+  ]));
+  assert.equal(tightResult.winner.proposal.proposedAction.kind, "hold");
 });

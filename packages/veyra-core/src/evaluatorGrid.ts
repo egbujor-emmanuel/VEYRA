@@ -4,9 +4,38 @@
 
 import { widthDrivenMetric, PLACEHOLDER_REBALANCE_GAS_WEI } from "./evaluator.js";
 import { positioningScore } from "./evaluatorV2.js";
+void positioningScore; // deliberately unused here -- see gridPlacementScore
 import { scoreProposals } from "./evaluatorKernel.js";
 import type { GridTradingJobSpec, ProposalMetrics, StrategyProposal } from "./types.js";
 import type { GridMarketSnapshot } from "./gridSnapshot.js";
+
+/**
+ * How well a grid slot is placed, which is NOT how well an LP range is centered.
+ *
+ * v2's positioningScore rewards a range for containing the current price, and this evaluator used
+ * it directly. That is exactly backwards for a grid. A grid slot is a resting one-sided order: it
+ * sits entirely above or entirely below the price by design, so positioningScore returns 0 for
+ * every slot no matter how well or badly placed it is. Once slots became strictly one-sided, every
+ * candidate scored identically on fee efficiency and risk, the only remaining difference was gas,
+ * and holding won every round by construction. The grid agent could not act at all.
+ *
+ * What actually matters for a resting order is how close it sits to the price -- near enough to be
+ * filled, rather than stranded far out where it earns nothing. Distance is measured against the
+ * slot's OWN width, so the metric needs no knowledge of any particular ladder geometry and grades
+ * every candidate by the same rule.
+ */
+export function gridPlacementScore(
+  range: { tickLower: number; tickUpper: number },
+  currentTick: number,
+): number {
+  const width = range.tickUpper - range.tickLower;
+  if (width <= 0) return 0;
+  // Inside its own range, a slot is actively converting and earning fees.
+  if (currentTick >= range.tickLower && currentTick < range.tickUpper) return 100;
+  const gap = currentTick < range.tickLower ? range.tickLower - currentTick : currentTick - range.tickUpper + 1;
+  // A slot one full width away from the price is worth nothing as a resting order.
+  return Math.max(0, Math.min(100, 100 * (1 - gap / width)));
+}
 
 export function computeMetricsGrid(
   job: GridTradingJobSpec,
@@ -22,7 +51,7 @@ export function computeMetricsGrid(
     const widthTicks = range.tickUpper - range.tickLower;
     return {
       widthEff: widthDrivenMetric(widthTicks, slot.tickSpacing),
-      posScore: positioningScore(range.tickLower, range.tickUpper, slot.currentTick),
+      posScore: gridPlacementScore(range, slot.currentTick),
     };
   });
 
