@@ -275,11 +275,35 @@ Stated here rather than left to be discovered:
 
 - **Testnet only.** No mainnet deployment, no real funds.
 
+- **Volatility is not being measured yet.** rangeKeeper's width responds to realized volatility, and
+  the pool's oracle buffer has been grown from 1 to 60 slots so it can be read
+  ([tx](https://testnet.bscscan.com/tx/0xc001bac758f2cbffb13c795d130e1b517e7606dcac5d91ecd523c54395f6d0b7)).
+  But a pool writes one observation per block containing a swap, and this one sees little flow, so
+  `readRealizedVolatility` still returns `INSUFFICIENT_HISTORY`. It reports that rather than
+  substituting 0 — "calm market" and "could not measure" are different claims. No swaps were
+  manufactured to fill the buffer faster.
+
+- **The evaluator cannot tell "meaningfully better" from "trivially better".** Scores are min-max
+  normalized across only three candidates, so the best value on an axis becomes 100 and the worst 0
+  no matter how small the gap. In round 8 a 2.5-point real difference in fee efficiency was scored
+  as a 100-point one, which biases the evaluator toward always rebalancing. Visible on the arena
+  page; not fixed.
+
+- **Grid Trading and Yield Optimisation are operator-invoked, not scheduled.** Rebalancing and
+  Health Factor monitoring run under the daemon. Grid was scheduled and taken back out after its
+  first pass stranded a slot; the underlying cause is fixed and it is scheduled again, but yield
+  stays manual deliberately — a migration moves the whole position on a signal the run record
+  itself calls unreliable on this testnet.
+
+- **The live position id is a constant, not discovered.** A successful rebalance mints a new token
+  id; the id is defined once in `@veyra/chain` and imported, but still updated by hand. Runtime
+  discovery from the wallet's own positions is the durable fix.
+
 ## Running it
 
 ```bash
 npm install
-npm test                       # 150 core + 40 chain tests
+npm test                       # 160 core + 45 chain tests
 npm run build --workspace @veyra/web
 npm run dev  --workspace @veyra/web
 ```
