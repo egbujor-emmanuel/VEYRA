@@ -45,7 +45,7 @@ export function ExecutionHistory() {
   const allExecuted = categories.reduce((n, c) => n + c.executedRunCount, 0);
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] px-6 pb-16 pt-12">
+    <div className="mx-auto w-full max-w-[1180px] px-6 pb-28 pt-16">
       <h1 className="text-display text-[clamp(1.9rem,4vw,2.75rem)] text-foreground">Execution History</h1>
       <p className="mt-4 max-w-[68ch] text-[16px] leading-relaxed text-muted-foreground">
         Every <span className="text-foreground">rebalancing</span> run, including blocked and failed

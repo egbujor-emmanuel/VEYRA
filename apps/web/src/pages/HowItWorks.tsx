@@ -79,7 +79,7 @@ function DeadlockDiagram() {
 
 export function HowItWorks() {
   return (
-    <div className="mx-auto w-full max-w-[1180px] px-6 pb-16 pt-14">
+    <div className="mx-auto w-full max-w-[1180px] px-6 pb-28 pt-16">
       <Badge variant="accent" className="mb-5">Technical detail</Badge>
       <h1 className="text-display max-w-[20ch] text-balance text-[clamp(2rem,5vw,3.2rem)] text-foreground">
         What VEYRA can do with your money, and what stops it

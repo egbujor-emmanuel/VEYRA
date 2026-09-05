@@ -56,7 +56,7 @@ export function Marketplace() {
 
       <div className="mx-auto w-full max-w-[1180px] px-6">
         {/* ---- hero ---- */}
-        <section className="pt-20 pb-16 sm:pt-28">
+        <section className="pt-24 pb-20 sm:pt-32">
           <Badge variant="accent" className="mb-6">
             <Dot />
             Live on BNB Smart Chain Testnet
@@ -75,9 +75,9 @@ export function Marketplace() {
           {/* Proof before promises: the aggregate on-chain record, above the fold. */}
           <ProofBar />
 
-          <div className="mt-8 grid gap-px overflow-hidden rounded-[14px] border border-white/[0.08] bg-white/[0.06] sm:grid-cols-3">
+          <div className="mt-12 grid gap-px overflow-hidden rounded-[14px] border border-white/[0.08] bg-white/[0.06] sm:grid-cols-3">
             {GUARANTEES.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="bg-background/60 p-6 backdrop-blur-sm">
+              <div key={title} className="bg-background/60 p-8 backdrop-blur-sm">
                 <Icon className="mb-3 text-accent" />
                 <h3 className="text-[15px] font-medium tracking-[-0.01em] text-foreground">{title}</h3>
                 <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{body}</p>
@@ -93,8 +93,8 @@ export function Marketplace() {
         <DepositPanel wallet={wallet} nativeBalanceWei={funding?.balance.wei ?? null} />
 
         {/* ---- catalog ---- */}
-        <section className="pt-10 pb-4">
-          <div className="mb-6 flex items-end justify-between gap-4">
+        <section className="pt-20 pb-8">
+          <div className="mb-8 flex items-end justify-between gap-4">
             <div>
               <h2 className="text-display text-[26px] text-foreground">Available agents</h2>
               <p className="mt-1.5 text-sm text-muted-foreground">

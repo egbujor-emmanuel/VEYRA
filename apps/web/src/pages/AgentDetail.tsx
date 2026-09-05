@@ -369,7 +369,7 @@ export function AgentDetail() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] px-6 pt-10 pb-4">
+    <div className="mx-auto w-full max-w-[1180px] px-6 pt-16 pb-12">
       <Link to="/agents" className="text-sm text-muted-foreground no-underline hover:text-foreground">
         &larr; Back to the marketplace
       </Link>

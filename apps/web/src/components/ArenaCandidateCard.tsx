@@ -48,15 +48,25 @@ export function ArenaCandidateCard({
         </div>
       )}
 
+      {/* Provenance stated once for the table, not stamped on all four rows.
+          Every metric here is DERIVED by definition -- they are computed from the observed
+          snapshot by the evaluator -- so repeating the badge per row filled a third of each card
+          with the same word and made the numbers harder to read, not better evidenced. */}
       {proposal.metrics && (
-        <table className="metrics">
-          <tbody>
-            <tr><td>fee efficiency</td><td>{proposal.metrics.estimatedFeeEfficiency.toFixed(1)}</td><td><ProvenanceBadge tier="DERIVED" /></td></tr>
-            <tr><td>risk score</td><td>{proposal.metrics.riskScore.toFixed(1)}</td><td><ProvenanceBadge tier="DERIVED" /></td></tr>
-            <tr><td>gas (wei)</td><td>{proposal.metrics.estimatedGasWei}</td><td><ProvenanceBadge tier="DERIVED" /></td></tr>
-            <tr><td>feasible</td><td>{proposal.metrics.executionFeasible ? "yes" : "no"}</td><td><ProvenanceBadge tier="DERIVED" /></td></tr>
-          </tbody>
-        </table>
+        <>
+          <table className="metrics">
+            <tbody>
+              <tr><td>fee efficiency</td><td>{proposal.metrics.estimatedFeeEfficiency.toFixed(1)}</td></tr>
+              <tr><td>risk score</td><td>{proposal.metrics.riskScore.toFixed(1)}</td></tr>
+              <tr><td>gas (wei)</td><td>{proposal.metrics.estimatedGasWei}</td></tr>
+              <tr><td>feasible</td><td>{proposal.metrics.executionFeasible ? "yes" : "no"}</td></tr>
+            </tbody>
+          </table>
+          <p className="metrics-provenance">
+            All four <ProvenanceBadge tier="DERIVED" /> from the observed snapshot by the same formula,
+            for every candidate.
+          </p>
+        </>
       )}
     </article>
   );

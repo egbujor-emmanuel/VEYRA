@@ -23,8 +23,8 @@
     z-index: 50;
     display: flex;
     align-items: center;
-    gap: 28px;
-    padding: 14px 24px;
+    gap: 34px;
+    padding: 18px 32px;
     background: oklch(0.14 0.018 264 / 0.72);
     backdrop-filter: blur(14px);
     border-bottom: 1px solid oklch(1 0 0 / 0.07);
@@ -84,6 +84,78 @@
     color: var(--color-muted-foreground);
   }
 
+  /* A collapsed post-mortem: available to anyone who wants it, not imposed on the page. */
+  .disclosure {
+    border: 1px solid oklch(1 0 0 / 0.08);
+    border-radius: var(--radius-card);
+    background: oklch(1 0 0 / 0.02);
+    padding: 16px 20px;
+  }
+  .disclosure > summary {
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--muted);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: color 0.15s ease;
+  }
+  .disclosure > summary:hover { color: var(--fg); }
+  .disclosure > summary::-webkit-details-marker { display: none; }
+  .disclosure > summary::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(-45deg);
+    transition: transform 0.2s ease;
+  }
+  .disclosure[open] > summary::before { transform: rotate(45deg); }
+  .disclosure[open] > summary { margin-bottom: 14px; }
+  .disclosure > p {
+    margin: 0 0 12px;
+    font-size: 15px;
+    line-height: 1.65;
+    color: var(--muted);
+  }
+  .disclosure > p:last-child { margin-bottom: 0; }
+
+  /* Wide evidence tables scroll inside their own panel instead of pushing the page sideways.
+     The transaction table carries a step name, a full-width hash, a block number and a gas figure
+     -- 469px of content that will not fit a 390px phone at any padding, so it has to scroll
+     locally rather than force a horizontal scrollbar on the whole document. */
+  table.tx-list {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* The nav is a single row of links; on a narrow screen it scrolls rather than overflowing. */
+  .topnav {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .topnav::-webkit-scrollbar { display: none; }
+
+  @media (max-width: 640px) {
+    .topnav { padding: 14px 16px; gap: 20px; }
+    .panel,
+    .card { padding: 20px; }
+  }
+
+  .metrics-provenance {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 10px 0 0;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
   /* ---- panels & cards ---- */
   .panel,
   .card {
@@ -91,8 +163,8 @@
     backdrop-filter: blur(10px);
     border: 1px solid oklch(1 0 0 / 0.08);
     border-radius: var(--radius-card);
-    padding: 26px;
-    margin-bottom: 22px;
+    padding: 32px;
+    margin-bottom: 28px;
     box-shadow:
       0 1px 0 oklch(1 0 0 / 0.06) inset,
       0 20px 50px -24px oklch(0 0 0 / 0.8);
@@ -102,7 +174,7 @@
     font-size: 18px;
     font-weight: 500;
     letter-spacing: -0.015em;
-    margin: 0 0 14px;
+    margin: 0 0 18px;
   }
   .cards {
     display: grid;

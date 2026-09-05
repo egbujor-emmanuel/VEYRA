@@ -25,6 +25,17 @@ import type { ArenaRoundSummary } from "../data/types";
 
 const ROUNDS: ArenaRoundSummary[] = archiveManifest.arenaRounds ?? [];
 
+/**
+ * Match the winner's precision instead of guessing per row.
+ *
+ * The tied rounds used to render at 0 decimals because the early ties were whole numbers, which
+ * made round 8 show a winner of 85.85 level with a runner-up of "86" -- two spellings of the same
+ * number, on a row whose whole point is that they are equal.
+ */
+function formatScore(n: number) {
+  return Number.isInteger(n) ? n.toFixed(0) : n.toFixed(2);
+}
+
 function formatDate(iso: string | null) {
   if (!iso) return null;
   return new Date(iso).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" });
@@ -59,7 +70,7 @@ export function ArenaHistory() {
   const firstHonestRound = recent.length > 0 ? recent[recent.length - 1]! : null;
 
   return (
-    <div className="mx-auto w-full max-w-[1180px] px-6 pb-16 pt-12">
+    <div className="mx-auto w-full max-w-[1180px] px-6 pb-28 pt-16">
       <h1 className="text-display text-[clamp(1.9rem,4vw,2.75rem)] text-foreground">Arena History</h1>
       <p className="mt-4 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
         Every evaluation round under the market-aware evaluator. Each hands the same on-chain state, read
@@ -67,42 +78,49 @@ export function ArenaHistory() {
       </p>
       <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
         <span className="text-foreground">
-          For the first {LAST_DEGENERATE_ROUND} rounds our strategy was not really a strategy.
+          For the first {LAST_DEGENERATE_ROUND} rounds our strategy was not really a strategy
         </span>{" "}
-        It computed the same range as{" "}
-        <span className="font-mono text-[14px]">baseline-symmetric-range</span> — the same half-width, the
-        same centering — and the one input meant to separate them, recent volatility, is never observable on
-        a pool whose oracle holds a single observation. So {ties} of those rounds tied on every axis and on
-        gas, and were decided by evaluation order alone.
+        — it computed the identical range to the naive baseline, so {ties} rounds tied on every axis and
+        were decided by evaluation order alone. Two separate bugs caused that, and both are fixed.
       </p>
-      <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
-        That is fixed now. rangeKeeper declines to reposition a position still sitting in the middle half of
-        its range, and widens on the overshoot it can actually measure rather than on a volatility number
-        nobody supplies.{" "}
-        {firstHonestRound && (
-          <span className="text-foreground">
-            In round {firstHonestRound.roundId} it declined to reposition a position already 93.4% centered,
-            and that decision won.
-          </span>
-        )}{" "}
-        That took two fixes, not one: a strategy willing to decline, and a scoring that stops
-        punishing it for declining.
-      </p>
-      <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
-        The first time that round ran, holding lost 50 to 75. Recentering moved fee efficiency from 96.7 to
-        99.2 and risk from 53.3 to 50.8 — under three points on each — but scores were normalised across the
-        three candidates, so the best value on an axis became 100 and the worst 0 no matter how small the gap.{" "}
-        <span className="text-foreground">A 2.5-point real difference was scored as a 100-point one</span>,
-        and the evaluator was structurally biased toward always rebalancing.
-      </p>
-      <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
-        Fee efficiency and risk are already 0–100 quantities, so ranking them against each other only threw
-        the magnitudes away. They are now used as they stand, and gas is measured against a real anchor —
-        the share of the job's own spend limit it consumes — rather than against the other candidates. The
-        same round now scores holding 85.85 against the marginal rebalance's 79.60. v1's evaluator is left on
-        the old scoring deliberately: it is a preserved historical policy, and rewriting it would erase the
-        record of what the first evaluator did.
-      </p>
+
+      {/* The full account is worth keeping and not worth forcing on everyone. Five paragraphs of
+          post-mortem above a seven-row table buried the table. */}
+      <details className="disclosure mt-4 max-w-[70ch]">
+        <summary>What was wrong, and what changed</summary>
+
+        <p>
+          <span className="text-foreground">The strategies were the same function.</span> rangeKeeper and{" "}
+          <span className="font-mono text-[13.5px]">baseline-symmetric-range</span> both computed a
+          half-width of <span className="font-mono text-[13.5px]">tickSpacing × 20</span> centred on the
+          current tick. The one input meant to separate them — recent volatility — is multiplied in, and it
+          is exactly 1 whenever volatility is unobserved. These pools carry a single oracle observation, so
+          it is always unobserved. Identical inputs, identical formula, identical output, every round.
+        </p>
+
+        <p>
+          <span className="text-foreground">The scoring punished restraint.</span> Scores were normalised
+          across the three candidates, so the best value on an axis became 100 and the worst 0 no matter how
+          small the gap. In round 8 recentring moved fee efficiency from 96.7 to 99.2 and risk from 53.3 to
+          50.8 — under three points each — and that was scored as 100 against 0. Holding lost 50 to 75, and
+          the evaluator was structurally biased toward always rebalancing.
+        </p>
+
+        <p>
+          Both are fixed. rangeKeeper now declines to reposition a position still in the middle half of its
+          range, and widens on overshoot it can actually measure. Fee efficiency and risk are already 0–100
+          quantities, so they are used as they stand, and gas is measured against a real anchor — the share
+          of the job's own spend limit it consumes. The same round now scores holding 85.85 against the
+          marginal rebalance's 79.60.
+        </p>
+
+        <p>
+          Rounds 1–{LAST_DEGENERATE_ROUND} are kept exactly as recorded rather than re-run, so the table
+          below marks which era each belongs to. v1's evaluator is also left on the old scoring on purpose:
+          it is a preserved historical policy, and rewriting it would erase the record of what the first
+          evaluator did.
+        </p>
+      </details>
 
       <div className="mt-8 overflow-hidden rounded-[14px] border border-white/[0.08]">
         {rounds.map((r, i) => {
@@ -128,7 +146,7 @@ export function ArenaHistory() {
                 </span>
                 <span className="mt-0.5 block text-[12.5px] text-muted-foreground">
                   {r.runnerUpCandidateId && r.runnerUpScore !== null
-                    ? `${r.decidedByOrdering ? "level with" : "ahead of"} ${r.runnerUpCandidateId} (${r.runnerUpScore.toFixed(r.decidedByOrdering ? 0 : 2)})`
+                    ? `${r.decidedByOrdering ? "level with" : "ahead of"} ${r.runnerUpCandidateId} (${formatScore(r.runnerUpScore)})`
                     : r.candidateCount > 0
                       ? `${r.candidateCount} candidates`
                       : ""}
@@ -139,7 +157,7 @@ export function ArenaHistory() {
 
               {r.winnerScore !== null && (
                 <span className="shrink-0 font-mono text-[13px] tabular text-foreground">
-                  {r.winnerScore.toFixed(Number.isInteger(r.winnerScore) ? 0 : 2)}
+                  {formatScore(r.winnerScore)}
                   <span className="text-muted-foreground">/100</span>
                 </span>
               )}
