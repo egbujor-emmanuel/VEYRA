@@ -12,6 +12,25 @@ export function roundToTickSpacing(tick: number, tickSpacing: number): number {
   return Math.round(tick / tickSpacing) * tickSpacing;
 }
 
+/**
+ * Directional rounding, for callers that need a bound to land on a specific SIDE of a tick rather
+ * than merely near it.
+ *
+ * roundToTickSpacing rounds to nearest, which is right for centering a range but wrong for a grid
+ * slot: nearest rounding can push a slot's upper bound past the current tick, turning a one-sided
+ * slot into a straddling one. That forces a two-token mint, which forces a ratio-fixing swap,
+ * which is the step that failed in production against a thin pool. See gridKeeper.
+ */
+export function floorToTickSpacing(tick: number, tickSpacing: number): number {
+  // `+ 0` normalizes -0 to 0. Math.floor(-0.5) * 50 is -0, which compares unequal to 0 under
+  // Object.is and would otherwise leak into range bounds and archived JSON.
+  return Math.floor(tick / tickSpacing) * tickSpacing + 0;
+}
+
+export function ceilToTickSpacing(tick: number, tickSpacing: number): number {
+  return Math.ceil(tick / tickSpacing) * tickSpacing + 0;
+}
+
 // ---- Exact tick <-> sqrtPriceX96 conversion -----------------------------------------------
 // A direct BigInt port of Uniswap V3 core's TickMath.getSqrtRatioAtTick (PancakeSwap V3 is a
 // straight fork and uses the identical algorithm/constants). This is NOT a float approximation
