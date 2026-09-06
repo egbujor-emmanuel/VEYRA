@@ -57,13 +57,28 @@ export function Dashboard() {
             </div>
           </div>
 
-          <ExecutionPlanPanel plan={round.executionPlan} />
-          <SimulationPanel simulation={round.simulation} />
+          {/* Plan and simulation each took a full-width panel to report that a hold needs neither.
+              Paired so a round that did nothing occupies the space of a round that did nothing. */}
+          <div className="grid gap-5 md:grid-cols-2">
+            <ExecutionPlanPanel plan={round.executionPlan} />
+            <SimulationPanel simulation={round.simulation} />
+          </div>
         </>
       )}
 
+      {/* The forensic record of one historical run: state transitions, every transaction, the
+          root-cause write-up, the corrective swaps, the final mint. It is the strongest evidence
+          on the site and it is also 2,000px of it, which pushed the live state and the track
+          record apart until the page read as a wall. Collapsed, not cut -- the summary line says
+          what it contains so nobody has to guess whether it is worth opening. */}
       {flagshipRun && (
-        <RunNarrative run={flagshipRun} amendment={flagshipAmendment} />
+        <details className="disclosure disclosure--panel">
+          <summary>
+            Execution narrative — run #{flagshipRun.runArchiveId}: every state transition, transaction
+            hash and gas figure, including the failure and how it was corrected
+          </summary>
+          <RunNarrative run={flagshipRun} amendment={flagshipAmendment} />
+        </details>
       )}
 
       <TrackRecordStat manifest={archiveManifest} />

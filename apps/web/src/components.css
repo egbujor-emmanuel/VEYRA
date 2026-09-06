@@ -146,6 +146,47 @@
     .card { padding: 20px; }
   }
 
+  /* A disclosure used at panel scale: the summary reads as a section heading, and the contents
+     are full panels rather than paragraphs, so it drops its own padding when open. */
+  .disclosure--panel {
+    padding: 20px 24px;
+    margin-bottom: 28px;
+  }
+  .disclosure--panel > summary {
+    font-size: 15px;
+    color: var(--color-foreground);
+  }
+  .disclosure--panel[open] {
+    padding-bottom: 4px;
+  }
+  .disclosure--panel > .panel:last-child,
+  .disclosure--panel > div:last-child > .panel:last-child {
+    margin-bottom: 20px;
+  }
+
+  /* A disclosure that still reads as a caution when collapsed. */
+  .disclosure--warning {
+    border-color: oklch(0.74 0.165 52 / 0.32);
+    background: oklch(0.74 0.165 52 / 0.05);
+  }
+  .disclosure--warning > summary {
+    color: var(--color-warning);
+  }
+  .disclosure--warning > summary:hover {
+    color: oklch(0.82 0.15 55);
+  }
+  .disclosure > ul {
+    margin: 10px 0 0;
+    padding-left: 18px;
+    list-style: disc;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--color-muted-foreground);
+  }
+  .disclosure > ul li + li {
+    margin-top: 6px;
+  }
+
   .metrics-provenance {
     display: flex;
     align-items: center;

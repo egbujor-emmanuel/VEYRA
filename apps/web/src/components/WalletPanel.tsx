@@ -127,17 +127,27 @@ export function WalletPanel() {
               I already have one
             </Button>
           </div>
-          <p className="mt-3 text-[13px] leading-relaxed text-muted-foreground">
-            &ldquo;I already have one&rdquo; restores a wallet from your passkey on any device — but only once
-            that wallet has made at least one transaction, because it is rebuilt from on-chain records. A
-            wallet you just created is remembered by this browser instead.
-          </p>
+          {/* Both of these are genuinely useful and neither is useful *yet* -- one explains a button
+              you have not pressed, the other a prompt you have not seen. Collapsed so the panel is a
+              wallet rather than a page of caveats; the Windows 10 note still renders its summary
+              line, so an affected visitor sees it before they hit the problem. */}
+          <details className="disclosure mt-4">
+            <summary>Restoring an existing wallet</summary>
+            <p>
+              &ldquo;I already have one&rdquo; restores a wallet from your passkey on any device — but only
+              once that wallet has made at least one transaction, because it is rebuilt from on-chain
+              records. A wallet you just created is remembered by this browser instead.
+            </p>
+          </details>
+
           {isWindows10 && (
-            <div className="notice-box mt-4 text-[13px]">
-              <strong>On Windows 10, not every passkey option will work.</strong> This wallet needs a
-              <em> discoverable</em> passkey, and Windows 10&apos;s built-in Windows Hello store cannot create
-              one (that arrived in Windows 11). At the prompt:
-              <ul className="mt-2 ml-4 list-disc space-y-1">
+            <details className="disclosure disclosure--warning mt-3">
+              <summary>On Windows 10, not every passkey option will work — which to pick</summary>
+              <p>
+                This wallet needs a <em>discoverable</em> passkey, and Windows 10&apos;s built-in Windows
+                Hello store cannot create one (that arrived in Windows 11). At the prompt:
+              </p>
+              <ul>
                 <li>
                   <strong>Use a phone or tablet</strong> (scan the QR) — always works.
                 </li>
@@ -150,7 +160,7 @@ export function WalletPanel() {
                   Windows 10. Not your fault, and nothing to fix; just pick one of the two above.
                 </li>
               </ul>
-            </div>
+            </details>
           )}
         </>
       )}
