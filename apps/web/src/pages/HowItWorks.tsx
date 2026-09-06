@@ -7,6 +7,7 @@
 import { ShieldCheck, KeyRound, FileCheck2, ExternalLink } from "lucide-react";
 import { Card } from "../components/ui/card";
 import { Badge } from "../components/ui/badge";
+import { PageHeader } from "../components/PageHeader";
 import { VEYRA_SETTLEMENT_HOOK, ERC8183_TESTNET } from "../constants";
 
 const SCOPE_PROOF = [
@@ -80,14 +81,17 @@ function DeadlockDiagram() {
 export function HowItWorks() {
   return (
     <div className="mx-auto w-full max-w-[1180px] px-6 pb-28 pt-16">
-      <Badge variant="accent" className="mb-5">Technical detail</Badge>
-      <h1 className="text-display max-w-[20ch] text-balance text-[clamp(2rem,5vw,3.2rem)] text-foreground">
-        What VEYRA can do with your money, and what stops it
-      </h1>
-      <p className="mt-5 max-w-[68ch] text-[17px] leading-relaxed text-muted-foreground">
-        Three claims this project makes that are worth checking rather than believing. Each one below is
-        backed by something on-chain, and each says what it does <em>not</em> prove.
-      </p>
+      <PageHeader
+        eyebrow="Technical detail"
+        title="What VEYRA can do with your money, and what stops it"
+        accent="oklch(0.76 0.15 165)"
+        lead={
+          <>
+            Three claims this project makes that are worth checking rather than believing. Each one below
+            is backed by something on-chain, and each says what it does <em>not</em> prove.
+          </>
+        }
+      />
 
       <Section icon={ShieldCheck} eyebrow="Custody" title="A scoped key, enforced by the chain">
         <p>

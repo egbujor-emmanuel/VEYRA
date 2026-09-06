@@ -22,13 +22,13 @@ export function Logo({ size = 28, className = "" }: { size?: number; className?:
     >
       <defs>
         <linearGradient id="veyra-mark" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
-          <stop stopColor="oklch(0.72 0.17 258)" />
-          <stop offset="1" stopColor="oklch(0.52 0.24 276)" />
+          <stop stopColor="oklch(0.86 0.15 92)" />
+          <stop offset="1" stopColor="oklch(0.72 0.155 74)" />
         </linearGradient>
       </defs>
 
       {/* Rounded field, low-contrast so the strokes carry the identity rather than a coloured tile. */}
-      <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="9" fill="oklch(0.20 0.03 264)" />
+      <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="9" fill="oklch(0.18 0.012 80)" />
       <rect
         x="0.75"
         y="0.75"
@@ -48,7 +48,7 @@ export function Logo({ size = 28, className = "" }: { size?: number; className?:
         strokeLinejoin="round"
       />
       {/* The selected outcome, at the point everything converges on. */}
-      <circle cx="16" cy="23.6" r="2.15" fill="oklch(0.78 0.16 258)" />
+      <circle cx="16" cy="23.6" r="2.15" fill="oklch(0.84 0.155 88)" />
     </svg>
   );
 }

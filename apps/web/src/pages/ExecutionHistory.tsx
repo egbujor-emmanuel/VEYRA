@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { archiveManifest } from "../data/loadArchive";
 import { Badge } from "../components/ui/badge";
 import { AGENT_CATALOG } from "../data/agentCatalog";
+import { PageHeader } from "../components/PageHeader";
 
 /**
  * Every agent-arena-loop run, including the ones that were blocked or failed.
@@ -46,8 +47,11 @@ export function ExecutionHistory() {
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-6 pb-28 pt-16">
-      <h1 className="text-display text-[clamp(1.9rem,4vw,2.75rem)] text-foreground">Execution History</h1>
-      <p className="mt-4 max-w-[68ch] text-[16px] leading-relaxed text-muted-foreground">
+      <PageHeader
+        eyebrow="On-chain runs"
+        title="Execution History"
+        accent="oklch(0.72 0.17 305)"
+        lead={<>
         Every <span className="text-foreground">rebalancing</span> run, including blocked and failed
         attempts — nothing hidden.{" "}
         <span className="text-foreground">
@@ -55,14 +59,15 @@ export function ExecutionHistory() {
         </span>
         , across {totalTxs} transactions and {totalGas.toLocaleString()} gas. The runs that did not are
         listed here too, with the state they stopped in.
-      </p>
-      {others.length > 0 && (
-        <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-muted-foreground">
-          The other three categories have their own runs, not listed here —{" "}
-          {allExecuted} of {allRuns} runs across all four categories reached the chain. Their records live
-          on each agent's page.
-        </p>
-      )}
+        {others.length > 0 && (
+          <>
+            {" "}The other three categories have their own runs, not listed here — {allExecuted} of{" "}
+            {allRuns} runs across all four categories reached the chain. Their records live on each
+            agent&apos;s page.
+          </>
+        )}
+        </>}
+      />
 
       <div className="mt-8 overflow-hidden rounded-[14px] border border-white/[0.08]">
         {entries.map((e, i) => {

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { archiveManifest } from "../data/loadArchive";
 import { Badge } from "../components/ui/badge";
+import { PageHeader } from "../components/PageHeader";
 import type { ArenaRoundSummary } from "../data/types";
 
 /**
@@ -71,11 +72,16 @@ export function ArenaHistory() {
 
   return (
     <div className="mx-auto w-full max-w-[1180px] px-6 pb-28 pt-16">
-      <h1 className="text-display text-[clamp(1.9rem,4vw,2.75rem)] text-foreground">Arena History</h1>
-      <p className="mt-4 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
-        Every evaluation round under the market-aware evaluator. Each hands the same on-chain state, read
-        at the block shown, to every candidate and scores them on identical axes.
-      </p>
+      <PageHeader
+        eyebrow="Evaluation record"
+        title="Arena History"
+        lead={
+          <>
+            Every evaluation round under the market-aware evaluator. Each hands the same on-chain state,
+            read at the block shown, to every candidate and scores them on identical axes.
+          </>
+        }
+      />
       <p className="mt-3 max-w-[70ch] text-[16px] leading-relaxed text-muted-foreground">
         <span className="text-foreground">
           For the first {LAST_DEGENERATE_ROUND} rounds our strategy was not really a strategy

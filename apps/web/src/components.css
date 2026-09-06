@@ -191,13 +191,52 @@
     border: 1px solid var(--card-edge, oklch(1 0 0 / 0.1));
   }
 
+  /* ---- shared page header (see PageHeader.tsx) ---- */
+  .page-header {
+    position: relative;
+    padding-bottom: 34px;
+    margin-bottom: 40px;
+  }
+  .page-header__eyebrow {
+    display: block;
+    margin-bottom: 14px;
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--page-accent, var(--color-accent));
+  }
+  .page-header__lead {
+    max-width: 68ch;
+    margin: 20px 0 0;
+    font-size: 17px;
+    line-height: 1.65;
+    color: var(--color-muted-foreground);
+  }
+  /* A hairline that fades out: it marks where the header ends without drawing a hard box, and
+     carries the page's accent so a page is recognisable by colour before it is read. */
+  .page-header__rule {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      var(--page-accent, var(--color-accent)) 0%,
+      oklch(1 0 0 / 0.10) 22%,
+      oklch(1 0 0 / 0.04) 60%,
+      transparent 100%
+    );
+  }
+
   /* ---- panels & cards ---- */
   .panel,
   .card {
     background: linear-gradient(180deg, oklch(1 0 0 / 0.05), oklch(1 0 0 / 0.02));
     backdrop-filter: blur(10px);
     border: 1px solid oklch(1 0 0 / 0.08);
-    border-radius: var(--radius-card);
+    border-radius: 18px;
     padding: 32px;
     margin-bottom: 28px;
     box-shadow:
@@ -303,7 +342,7 @@
     color: var(--color-primary-foreground);
     box-shadow:
       0 1px 0 oklch(1 0 0 / 0.2) inset,
-      0 8px 24px oklch(0.55 0.245 264 / 0.35);
+      0 8px 24px oklch(0.80 0.157 86 / 0.28);
   }
   .btn-primary:hover {
     filter: brightness(1.1);

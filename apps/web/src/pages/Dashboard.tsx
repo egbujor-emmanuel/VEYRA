@@ -9,6 +9,7 @@ import { TrackRecordStat } from "../components/TrackRecordStat";
 import { ProvenanceBadge } from "../components/ProvenanceBadge";
 import { archiveManifest, loadArenaRound, loadAgentArenaRun, loadResumedMintAmendment } from "../data/loadArchive";
 import type { ArenaRound, AgentArenaRun, ResumedMintAmendment } from "../data/types";
+import { PageHeader } from "../components/PageHeader";
 
 export function Dashboard() {
   const [round, setRound] = useState<ArenaRound | null>(null);
@@ -32,8 +33,11 @@ export function Dashboard() {
 
   return (
     <div className="wrap">
-      <h1>VEYRA</h1>
-      <p className="subtitle">The intelligence layer for autonomous finance — real identity, real market observation, real safety gates, real execution.</p>
+      <PageHeader
+        eyebrow="Live state"
+        title="Rebalancing dashboard"
+        lead="Position state read live from BSC testnet, the latest evaluation round in full, and the execution narrative of the run that put the current position on chain."
+      />
 
       <LiveHero />
 

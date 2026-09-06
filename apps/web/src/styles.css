@@ -6,29 +6,41 @@
  *
  * Tokens follow the shadcn convention (oklch, --background/--foreground pairs) so components
  * from a shadcn registry drop in without translation. The specific values are derived from the
- * design language the user pointed at: deep navy-to-black gradient ground rather than flat
- * black, oversized MEDIUM-weight display type with tight negative tracking (21st.dev's own h1
- * computes to 64px/500/-1.408px/1.06, not bold), an electric blue accent, and glassy panels with
- * deliberately low-contrast borders.
+ * design language: a warm near-black ground rather than flat black, oversized MEDIUM-weight
+ * display type with tight negative tracking (h1 computes to 64px/500/-1.408px/1.06, not bold),
+ * and glassy panels with deliberately low-contrast borders.
+ *
+ * The accent is BNB's own gold, #F0B90B -> oklch(0.80 0.157 86). It replaced an electric blue,
+ * which was the generic choice every crypto dashboard makes and said nothing about which chain
+ * this runs on. Gold carries a cost the blue did not: at this chroma it is far more assertive, so
+ * it is rationed -- one accent per view, on the thing that matters, never on a large filled area
+ * and never on two competing elements at once. The ground was retinted off navy toward neutral
+ * warm so the gold sits ON it rather than fighting a blue cast.
  */
 
 @theme {
-  --color-background: oklch(0.14 0.018 264);
-  --color-foreground: oklch(0.97 0.005 260);
-  --color-muted: oklch(0.24 0.022 264);
-  --color-muted-foreground: oklch(0.68 0.024 258);
-  --color-card: oklch(0.18 0.022 264);
-  --color-border: oklch(0.30 0.026 262);
-  --color-input: oklch(0.26 0.024 262);
+  --color-background: oklch(0.13 0.008 80);
+  --color-foreground: oklch(0.97 0.004 85);
+  --color-muted: oklch(0.23 0.010 80);
+  --color-muted-foreground: oklch(0.69 0.014 84);
+  --color-card: oklch(0.17 0.010 80);
+  --color-border: oklch(0.29 0.012 82);
+  --color-input: oklch(0.25 0.011 82);
 
-  /* Electric blue -- the single saturated accent, used sparingly. */
-  --color-primary: oklch(0.55 0.245 264);
-  --color-primary-foreground: oklch(0.99 0 0);
-  --color-accent: oklch(0.62 0.20 262);
+  /* BNB gold. The single saturated accent, rationed hard -- see the note above. */
+  --color-primary: oklch(0.80 0.157 86);
+  /* Near-black ON the gold, never white: at L 0.80 a white label fails contrast badly, and the
+     dark-on-gold pairing is BNB's own. */
+  --color-primary-foreground: oklch(0.16 0.012 80);
+  --color-accent: oklch(0.80 0.157 86);
+  --color-accent-dim: oklch(0.72 0.145 84);
 
-  --color-success: oklch(0.72 0.17 155);
-  --color-warning: oklch(0.78 0.16 78);
-  --color-danger: oklch(0.64 0.22 25);
+  --color-success: oklch(0.74 0.16 158);
+  /* Pushed well off the accent's hue. At oklch(0.78 0.16 78) it sat within a few degrees of the
+     BNB gold, so "1 failure kept on record" read as brand decoration rather than as a caution --
+     the one thing on this site that must never happen to a warning. Now clearly orange. */
+  --color-warning: oklch(0.74 0.165 52);
+  --color-danger: oklch(0.65 0.21 22);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -67,12 +79,13 @@
     pointer-events: none;
     z-index: -1;
     background:
-      radial-gradient(1200px 700px at 50% -10%, oklch(0.42 0.18 264 / 0.55), transparent 70%),
-      radial-gradient(900px 600px at 15% 45%, oklch(0.38 0.15 258 / 0.30), transparent 72%);
+      radial-gradient(1250px 720px at 50% -12%, oklch(0.62 0.13 86 / 0.20), transparent 70%),
+      radial-gradient(950px 620px at 12% 42%, oklch(0.50 0.10 78 / 0.13), transparent 74%),
+      radial-gradient(800px 520px at 92% 88%, oklch(0.44 0.09 92 / 0.10), transparent 76%);
   }
 
   ::selection {
-    background: oklch(0.55 0.245 264 / 0.35);
+    background: oklch(0.80 0.157 86 / 0.30);
   }
 
   /* Focus is never removed -- only restyled, so keyboard users keep a visible ring. */
