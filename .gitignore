@@ -10,3 +10,7 @@ dist/
 
 # Agent daemon runtime state (cursor + handled job ids) -- operational, not source.
 services/agent-daemon/.state.json
+
+# Screenshots written by scripts/e2eVisitorPath.mjs -- artefacts of a test run, not source.
+e2e-visitor.png
+*.local.png
