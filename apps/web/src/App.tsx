@@ -8,6 +8,7 @@ import { Marketplace } from "./pages/Marketplace";
 import { AgentDetail } from "./pages/AgentDetail";
 import { HowItWorks } from "./pages/HowItWorks";
 import { Button } from "./components/ui/button";
+import { Logo } from "./components/Logo";
 import { cn } from "./lib/utils";
 import { WalletProvider } from "./hooks/walletContext";
 
@@ -22,12 +23,10 @@ const NAV = [
 function TopNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/[0.07] bg-background/70 backdrop-blur-xl">
-      <div className="mx-auto flex h-14 w-full max-w-[1180px] items-center gap-8 px-6">
+      <div className="mx-auto flex h-[68px] w-full max-w-[1180px] items-center gap-10 px-6">
         <Link to="/agents" className="flex items-center gap-2.5 no-underline">
-          <span className="grid size-6 place-items-center rounded-md bg-primary text-[11px] font-semibold text-primary-foreground">
-            V
-          </span>
-          <span className="text-[17px] font-semibold tracking-[-0.02em] text-foreground">VEYRA</span>
+          <Logo size={28} />
+          <span className="text-[18px] font-semibold tracking-[-0.03em] text-foreground">VEYRA</span>
         </Link>
 
         <nav className="hidden items-center gap-1 md:flex">

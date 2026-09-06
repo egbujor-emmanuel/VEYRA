@@ -35,6 +35,17 @@ function useInView<T extends HTMLElement>(): [React.RefObject<T>, boolean] {
       setInView(true);
       return;
     }
+    // A hard safety net.
+    //
+    // Scroll-reveal has now hidden real content twice on this site: the agent catalog and the
+    // custody cards both rendered as empty space because the observer never fired for them. The
+    // causes vary -- an instant scroll that skips an element, a full-page capture, an anchor jump,
+    // a browser that throttles observers in a background tab -- and they are not worth enumerating
+    // one by one. Whatever the reason, if an element has not been revealed shortly after mount, it
+    // gets revealed anyway. The animation is a nicety; the content is the point, and no animation
+    // is worth a page that renders blank boxes.
+    const safety = setTimeout(() => setInView(true), 1200);
+
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {
@@ -44,10 +55,16 @@ function useInView<T extends HTMLElement>(): [React.RefObject<T>, boolean] {
           }
         }
       },
-      { rootMargin: "0px 0px -12% 0px", threshold: 0.05 },
+      // Positive margin: reveal a little BEFORE the element reaches the viewport, so content is
+      // already in place by the time it is scrolled to. A negative margin meant a card had to be
+      // properly on screen before it began fading in, which reads as content arriving late.
+      { rootMargin: "240px 0px 240px 0px", threshold: 0.01 },
     );
     observer.observe(el);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(safety);
+      observer.disconnect();
+    };
   }, []);
 
   return [ref, inView];

@@ -30,7 +30,11 @@ const pwSpecifier = (() => {
   // A filesystem path -- convert it, so Windows backslashes and spaces both survive.
   return toUrl(p).href;
 })();
-const { chromium } = await import(pwSpecifier);
+// Playwright's entry is CommonJS, so importing it by file URL yields { default: module.exports }
+// rather than named exports. Importing it by bare specifier does give names. Handle both.
+const pwModule = await import(pwSpecifier);
+const chromium = pwModule.chromium ?? pwModule.default?.chromium;
+if (!chromium) throw new Error(`could not load playwright's chromium from ${pwSpecifier}`);
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const BASE = process.env.VEYRA_SITE ?? "https://egbujor-emmanuel.github.io/VEYRA/";
@@ -130,13 +134,20 @@ if (!(await authorize.isEnabled().catch(() => false))) {
   failed = true;
 } else {
   await authorize.click();
-  await page.waitForFunction(
-    () => /session/i.test(document.body.innerText) && !/NO SESSION/i.test(document.body.innerText),
-    { timeout: 180_000 },
-  ).catch(() => {});
-  const txt = await page.evaluate(() => document.body.innerText);
-  if (/NO SESSION/i.test(txt)) { bad("UI still reports NO SESSION"); failed = true; }
-  else ok("UI reports an active session");
+  // Wait for the account to actually gain code (EIP-7702 delegation) -- the UI's own wording is
+  // not evidence. An earlier version of this check passed merely because the words "NO SESSION"
+  // had gone from the page, which they can do for reasons that are not success.
+  await page
+    .waitForFunction(() => /session expires/i.test(document.body.innerText) === true, { timeout: 60_000 })
+    .catch(() => {});
+  await page.waitForTimeout(20_000);
+
+  const panel = await page.evaluate(() => {
+    const el = [...document.querySelectorAll("div")].find((d) => /Your wallet/i.test(d.textContent ?? ""));
+    return (el?.innerText ?? document.body.innerText).slice(0, 900);
+  });
+  console.log("    --- wallet panel as rendered ---");
+  for (const line of panel.split(String.fromCharCode(10))) console.log("    | " + line);
 }
 
 // ---------------------------------------------------------------- 4. verify the session ON-CHAIN

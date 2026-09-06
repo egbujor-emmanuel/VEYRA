@@ -17,6 +17,24 @@ export type CategoryMaturity = "live-executed" | "recommendation-only";
  */
 export type CategoryScheduling = "scheduled" | "on-demand";
 
+/**
+ * A hue per category.
+ *
+ * The catalog was four identically-dark cards distinguished only by their text, which is a poor
+ * way to present a marketplace -- nothing to scan by, nothing to remember a category by. Each
+ * category now carries one accent used for its icon, its hover border and a faint tint, so the
+ * grid reads as four distinct things at a glance. Values are oklch so they sit at the same
+ * lightness and none shouts louder than the others.
+ */
+export interface CategoryAccent {
+  /** Icon and emphasis colour. */
+  fg: string;
+  /** Very low-alpha wash behind the card. */
+  wash: string;
+  /** Hover border. */
+  edge: string;
+}
+
 export interface AgentCatalogEntry {
   id: JobCategory;
   displayName: string;
@@ -24,6 +42,7 @@ export interface AgentCatalogEntry {
   longDescription: string;
   maturity: CategoryMaturity;
   scheduling: CategoryScheduling;
+  accent: CategoryAccent;
   /** Why it is scheduled or not -- shown in full on the detail page. */
   schedulingNote: string;
 }
@@ -31,6 +50,7 @@ export interface AgentCatalogEntry {
 export const AGENT_CATALOG: AgentCatalogEntry[] = [
   {
     id: "rebalance",
+    accent: { fg: "oklch(0.72 0.16 255)", wash: "oklch(0.72 0.16 255 / 0.07)", edge: "oklch(0.72 0.16 255 / 0.40)" },
     displayName: "Rebalancing",
     shortDescription: "Manages PancakeSwap V3 LP ranges, recentering the position as price drifts.",
     longDescription:
@@ -42,6 +62,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
   },
   {
     id: "grid-trading",
+    accent: { fg: "oklch(0.70 0.17 305)", wash: "oklch(0.70 0.17 305 / 0.07)", edge: "oklch(0.70 0.17 305 / 0.40)" },
     displayName: "Grid Trading",
     shortDescription: "Places and recenters a ladder of narrow-range positions around the current price.",
     longDescription:
@@ -53,6 +74,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
   },
   {
     id: "yield-optimisation",
+    accent: { fg: "oklch(0.74 0.15 165)", wash: "oklch(0.74 0.15 165 / 0.07)", edge: "oklch(0.74 0.15 165 / 0.40)" },
     displayName: "Yield Optimisation",
     shortDescription: "Compares fee-growth across real PancakeSwap pools and moves capital to the better one.",
     longDescription:
@@ -64,6 +86,7 @@ export const AGENT_CATALOG: AgentCatalogEntry[] = [
   },
   {
     id: "health-factor-monitoring",
+    accent: { fg: "oklch(0.79 0.14 70)", wash: "oklch(0.79 0.14 70 / 0.07)", edge: "oklch(0.79 0.14 70 / 0.40)" },
     displayName: "Health Factor Monitoring",
     shortDescription: "Watches a real Venus lending position and repays it before liquidation risk develops.",
     longDescription:
